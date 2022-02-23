@@ -2,7 +2,7 @@
 
 ### Set up 
 `pipenv shell`  
-`streamit run app.py`
+`streamlit run app.py`
 
 ### Installing new packages
 `pipenv install <package name>`  
