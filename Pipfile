@@ -8,6 +8,7 @@ streamlit = "*"
 yahoo-fin = "*"
 pandas = "*"
 numpy = "*"
+yfinance = "*"
 
 [dev-packages]
 
