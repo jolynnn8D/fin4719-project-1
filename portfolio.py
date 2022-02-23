@@ -53,9 +53,9 @@ def display():
 
     st.header("Portfolio selection")
     
-    portfolio_theme = st.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
-    risk_slider = st.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
-    st.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
+    portfolio_theme = st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
+    risk_slider = st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
+    st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
     st.subheader("Portfolio weights")
     st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme that you chose. Feel free to change the weights.")
