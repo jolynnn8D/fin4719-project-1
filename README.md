@@ -6,7 +6,6 @@
 
 ### Installing new packages
 `pipenv install <package name>`  
-* Don't commit Pipfile.lock
 
 ### Adding new pages 
 1. In a new Python file, write all functions under `def display()`  
