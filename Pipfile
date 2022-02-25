@@ -9,6 +9,7 @@ yahoo-fin = "*"
 pandas = "*"
 numpy = "*"
 yfinance = "*"
+matplotlib = "*"
 
 [dev-packages]
 
