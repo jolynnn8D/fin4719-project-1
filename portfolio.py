@@ -38,33 +38,37 @@ def display():
         "positions" not in st.session_state:
         compute_theme(st.session_state.theme, st.session_state.risk)
     
+    col1, col2 = st.columns(2)
 
-    st.header("Portfolio Selection")
-    
-    st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
-    st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
-    if st.session_state.risk == "Low":
-        st.sidebar.checkbox("Short Selling", key="short_sell")
-    st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
+    with col1:
+        st.header("Portfolio Selection")
+        
+        st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
+        st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
+        if st.session_state.risk == "Low":
+            st.sidebar.checkbox("Short Selling", key="short_sell")
+        st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
-    
-    st.markdown(f"##### **Expected Return: {round(st.session_state.expreturn*100, 2)}%**")
-    st.markdown(f"##### **Expected Variance: {round(st.session_state.expvar*100, 2)}%**")
-    st.line_chart(st.session_state.positions)
-    st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
-    for (ticker, weight) in st.session_state.weights.items():
-        st.markdown(f"**{ticker}**")
-        st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
+        
+        st.markdown(f"##### **Expected Return: {round(st.session_state.expreturn*100, 2)}%**")
+        st.markdown(f"##### **Expected Variance: {round(st.session_state.expvar*100, 2)}%**")
+        st.line_chart(st.session_state.positions)
+        st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
+        for (ticker, weight) in st.session_state.weights.items():
+            st.markdown(f"**{ticker}**")
+            st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
 
-    st.subheader("")
-    st.subheader("Analytics")
-    df = st.session_state.positions.reset_index()
-    st.plotly_chart(rolling_beta(df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]))
-    st.plotly_chart(rolling_sharpe(df.iloc[:,0], df.iloc[:,1]))
+        st.subheader("")
     
-    df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
-    st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
-    st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
+    with col2:
+        st.header("Analytics")
+        df = st.session_state.positions.reset_index()
+        st.plotly_chart(rolling_beta(df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]))
+        st.plotly_chart(rolling_sharpe(df.iloc[:,0], df.iloc[:,1]))
+        
+        df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
+        st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
+        st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
 
 # Main computation functions
 def compute_theme(theme, risk):
