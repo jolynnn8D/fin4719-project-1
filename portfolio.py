@@ -108,7 +108,7 @@ def calculate_mvp(returns, short_sell=True):
     else:
         return (flattened_weights, expected_returns*252, expected_variance*252)
 
-def monte_carlo(returns, type="sharpe", n=10):
+def monte_carlo(returns, type="sharpe", n=1000):
     varcov = returns.cov()
     num_stocks = len(returns.columns)
     best_weights = []
