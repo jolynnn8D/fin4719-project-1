@@ -6,6 +6,7 @@ import numpy as np
 import scipy.stats as stats 
 import plotly.graph_objects as go 
 import plotly.express as px 
+from datetime import datetime as dt
 
 # Parameters
 themes = {
@@ -38,7 +39,7 @@ def display():
         compute_theme(st.session_state.theme, st.session_state.risk)
     
 
-    st.header("Portfolio selection")
+    st.header("Portfolio Selection")
     
     st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
     st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
@@ -55,10 +56,15 @@ def display():
         st.markdown(f"**{ticker}**")
         st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
 
+    st.subheader("")
     st.subheader("Analytics")
     df = st.session_state.positions.reset_index()
     st.plotly_chart(rolling_beta(df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]))
     st.plotly_chart(rolling_sharpe(df.iloc[:,0], df.iloc[:,1]))
+    
+    df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
+    st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
+    st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
 
 # Main computation functions
 def compute_theme(theme, risk):
@@ -223,7 +229,65 @@ def rolling_sharpe(dates, asset_pr, window = 180):
     plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling sharpe': rolling_sharpe})
     
     # plot
-    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe', title = str('Rolling sharpe' + ' (' + str(window) + '-' + 'days' + ')'))
+    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe', title = str('Rolling Sharpe' + ' (' + str(window) + '-' + 'days' + ')'))
     
     return fig 
+
+def return_heatmap(dates, asset_pr):
+
+    # convert dtype to dates and resample to month end price
+    data = pd.DataFrame([dates, asset_pr]).T
+    data.columns = ['Date', 'asset_pr']
+    data.Date = pd.to_datetime(dates)
+    data.set_index('Date', inplace = True)    
+    data = data.resample('M').last()
+    data = data.reset_index()
+    
+    # find asset monthly retrun
+    data['asset_rt'] = data.asset_pr.pct_change()*100
+    data['asset_rt'] = data['asset_rt'].round(2)
+    data.dropna()
+    
+    # get year and month 
+    asset_rt = data.asset_rt
+    year = data.Date.dt.strftime("%Y")
+    month = data.Date.dt.strftime("%m")
+    
+    #reshape dataframe
+    df = pd.DataFrame([year, month, asset_rt]).T
+    df.columns = ['Year', 'Month', 'Return']
+    df = df.pivot_table(index='Year', columns='Month', values='Return')
+    
+    fig = px.imshow(df, labels=dict(x="Month", y="Year", color="Return"), title="Monthly Return Heatmap",
+                    color_continuous_scale ='RdYlGn' , color_continuous_midpoint = 0,
+                    text_auto=True)
+    
+    return fig
+
+def return_barchart(dates, asset_pr):
+
+    # convert dtype to dates and resample to month end price
+    data = pd.DataFrame([dates, asset_pr]).T
+    data.columns = ['Date', 'asset_pr']
+    data.Date = pd.to_datetime(dates)
+    data.set_index('Date', inplace = True)    
+    data = data.resample('Y').last()
+    data = data.reset_index()
+    
+    # find asset monthly retrun
+    data['asset_rt'] = data.asset_pr.pct_change()*100
+    data['asset_rt'] = data['asset_rt'].round(2)
+    data.dropna()
+    
+    # get year and month 
+    asset_rt = data.asset_rt
+    year = data.Date.dt.strftime("%Y")
+    
+    #reshape dataframe
+    df = pd.DataFrame([year[1:], asset_rt]).T
+    df.columns = ['Year', 'Return']
+    
+    fig = px.bar(df, x='Return', y='Year', orientation='h', title="Monthly Return Barchart", text_auto = True)
+    
+    return fig
 

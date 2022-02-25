@@ -12,6 +12,7 @@ yfinance = "*"
 matplotlib = "*"
 scipy = "*"
 plotly = "*"
+datetime = "*"
 
 [dev-packages]
 
