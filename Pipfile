@@ -10,6 +10,8 @@ pandas = "*"
 numpy = "*"
 yfinance = "*"
 matplotlib = "*"
+scipy = "*"
+plotly = "*"
 
 [dev-packages]
 
