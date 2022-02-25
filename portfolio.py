@@ -3,6 +3,9 @@ import yahoo_fin.stock_info as si
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import scipy.stats as stats 
+import plotly.graph_objects as go 
+import plotly.express as px 
 
 # Parameters
 themes = {
@@ -11,7 +14,7 @@ themes = {
     "Value": ["AAPL", "MSFT", "AMZN", "NFLX"]
 }
 
-startdate = "2020-01-01"
+startdate = "2015-01-01"
 enddate = "2021-12-31"
 benchmark = "^GSPC"
 value_key = f"{benchmark} Value"
@@ -40,7 +43,7 @@ def display():
     st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
     st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
     if st.session_state.risk == "Low":
-        st.sidebar.checkbox("Short Selling", value=True, key="short_sell")
+        st.sidebar.checkbox("Short Selling", key="short_sell")
     st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
     
@@ -51,6 +54,11 @@ def display():
     for (ticker, weight) in st.session_state.weights.items():
         st.markdown(f"**{ticker}**")
         st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
+
+    st.subheader("Analytics")
+    df = st.session_state.positions.reset_index()
+    st.plotly_chart(rolling_beta(df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]))
+    st.plotly_chart(rolling_sharpe(df.iloc[:,0], df.iloc[:,1]))
 
 # Main computation functions
 def compute_theme(theme, risk):
@@ -139,7 +147,6 @@ def get_returns(tickers, startdate, enddate):
     return returns_data
 
 def get_positions(returns, weights):
-    print(returns)
     returns["NormReturns"] = 0
     for ticker, weight in weights.items():
         returns['NormReturns'] += (returns[ticker] + 1) * weight
@@ -162,3 +169,61 @@ def get_index_position(benchmark):
     for i in range(1, len(returns)):
         returns.loc[i, value_key] = returns.loc[i-1, value_key] * returns.loc[i, benchmark]
     return returns[value_key]
+
+### Analytics ###
+
+def rolling_beta(dates, asset_pr, benchmark_pr, window = 180):
+    # find returns 
+    benchmark_rt = benchmark_pr.pct_change().dropna()
+    asset_rt = asset_pr.pct_change().dropna()
+    
+    # Initialise results list
+    rolling_beta = []
+
+    #get df size -1 for dropna 
+    length = len(dates)
+    
+    # beta of a window
+    def beta(benchmark_rt, asset_rt):
+
+        # x is the benchmark, y is the asset linregress(x,y) -- CAPM: R_i = a + beta(R_m - R_f) + e
+        ols = stats.linregress(benchmark_rt, asset_rt)
+        beta = ols.slope
+        return beta
+
+    # for loop for 1-day step
+    for i in range(length-window):
+        rolling_beta.append(beta(benchmark_rt[i:i+window], asset_rt[i:i+window]))
+        
+    plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling Beta': rolling_beta})
+    
+    # plot
+    fig = px.line(plt_data, x = 'Date', y = 'Rolling Beta', title = str('Rolling Beta' + ' (' + str(window) + '-' + 'days' + ')'))
+    
+    return fig 
+
+def rolling_sharpe(dates, asset_pr, window = 180):
+    asset_rt = asset_pr.pct_change().dropna()
+    
+    # Initialise results list
+    rolling_sharpe = []
+
+    #get df size -1 for dropna 
+    length = len(dates)
+    
+    # beta of a window
+    def sharpe(asset_rt):
+        sharpe = np.mean(asset_rt)/np.std(asset_rt)
+        return sharpe
+
+    # for loop for 1-day step
+    for i in range(length-window):
+        rolling_sharpe.append(sharpe(asset_rt[i:i+window]))
+        
+    plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling sharpe': rolling_sharpe})
+    
+    # plot
+    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe', title = str('Rolling sharpe' + ' (' + str(window) + '-' + 'days' + ')'))
+    
+    return fig 
+

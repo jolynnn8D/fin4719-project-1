@@ -7,7 +7,6 @@ import events
 project_title = "FIN4719 Project 1"
 
 st.set_page_config(page_title=project_title)
-st.title(project_title)
 
 # Sidebar
 
