@@ -58,6 +58,7 @@ def display():
         st.markdown(f"##### **Expected Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
+        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights))
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
@@ -386,3 +387,16 @@ def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=
     
     return fig
 
+
+def plot_weight_pie_charts(weight_dict):
+    
+    plt_data = pd.DataFrame(
+        [(ticker, weight) for ticker,weight in weight_dict.items()],
+        columns=['Ticker','Weight']
+    )
+
+    fig = px.pie(plt_data, values='Weight', names='Ticker', title='Constituents', hole=0.4)
+    fig.update_traces(textinfo='label+percent')
+    fig.update_layout(showlegend=False)
+    
+    return fig
