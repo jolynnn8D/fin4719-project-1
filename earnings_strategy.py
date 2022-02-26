@@ -8,12 +8,27 @@ from sklearn import linear_model
 import scipy.stats as st
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-import matplotlib.pyplot as plt
 import plotly.express as px 
-
 import warnings
 warnings.filterwarnings("ignore")
 
+
+
+def display():
+    st.subheader("Active Investing Strategy")
+
+
+    # buttons i'll add in later, ps went to sleep
+    # date picker - from and to, up to 5 years from current date
+    # stock picker - choose from ticker_choices list
+    
+    # outputs to add in later
+    # historical backtest chart
+    # expected returns annualized
+    # strategy suggestion (e.g. buy on x day and sell on x day)
+    
+    
+ticker_choices = ['ANDE','DOW','GM','HWKN','JPM','NWN','SCVL','SRCE','TSLA', 'WMT']    
 
 winar_dict = {
     'winar5': [+1, +1],
@@ -21,6 +36,7 @@ winar_dict = {
     'winar7': [+2, +10],
     'winar8': [+2, +20],
     }
+
 
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):
