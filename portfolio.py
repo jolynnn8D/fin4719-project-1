@@ -296,15 +296,40 @@ def return_barchart(dates, asset_pr):
     # find asset monthly retrun
     data['asset_rt'] = data.asset_pr.pct_change()*100
     data['asset_rt'] = data['asset_rt'].round(2)
-    data.dropna()
-    
+    data.dropna(inplace=True)
+       
     # get year and month 
     asset_rt = data.asset_rt
-    year = data.Date.dt.strftime("%Y")
+    # year = data.Date.dt.strftime("%Y")
+    year = data.Date.dt.year.astype(int)
     
     #reshape dataframe
     df = pd.DataFrame([year[1:], asset_rt]).T
     df.columns = ['Year', 'Return']
+
+    # create negative ret flag
+    df['is_negative']  = np.where(df['Return'] < 0, True , False)
+    
+    color_mapping = {
+        True : "red",
+        False : "green"
+    }
+    
+    fig = px.bar(
+        df, 
+        x='Return', 
+        y='Year', 
+        color='is_negative',
+        color_discrete_map=color_mapping,
+        orientation='h', 
+        title="Monthly Return Barchart", 
+        text_auto=True)
+    fig.update_layout(showlegend=False)
+    fig.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
+    
+    return fig
+
+
 # input price series with date set as index
 def calc_il(price, base_date=None, end_date=None, rebase=1000):
     """Calculate index level
