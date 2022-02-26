@@ -1,3 +1,4 @@
+import warnings
 import streamlit as st
 import yahoo_fin.stock_info as si
 import yfinance as yf
@@ -17,6 +18,9 @@ themes = {
 
 startdate = "2015-01-01"
 enddate = "2021-12-31"
+base_date = "2019-01-01"
+covid_startdate = "2020-02-28"
+covid_enddate = "2021-09-30"
 benchmark = "^GSPC"
 value_key = f"{benchmark} Value"
 
@@ -69,6 +73,16 @@ def display():
         df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
         st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
         st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
+        
+        st.header("Historical Performance")
+        st.plotly_chart(
+            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1], 
+                                 base_date=base_date)
+            )
+        st.plotly_chart(
+            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1],
+                                 base_date=covid_startdate, end_date=covid_enddate)
+            )
 
 # Main computation functions
 def compute_theme(theme, risk):
@@ -290,8 +304,85 @@ def return_barchart(dates, asset_pr):
     #reshape dataframe
     df = pd.DataFrame([year[1:], asset_rt]).T
     df.columns = ['Year', 'Return']
+# input price series with date set as index
+def calc_il(price, base_date=None, end_date=None, rebase=1000):
+    """Calculate index level
+
+    Args:
+        price (pd.Series): Single price series with date set as index
+        base_date (str): Start date of the reference period for calculating index levels. If None, take the earliest available date in price sample. Defaults to None.
+        end_date (str, optional): Ending date of reference period for calculating index levels. If None, take the last available date in price sample. Defaults to None.
+        rebase (int, optional): Starting index level. Defaults to 1000.
+
+    Returns:
+        pd.Series: Timeseries of index levels
+    """
+    not_in_daterange = (pd.to_datetime(base_date) < price.index.min())
     
-    fig = px.bar(df, x='Return', y='Year', orientation='h', title="Monthly Return Barchart", text_auto = True)
+    # check if base_date is within sample date range in price series
+    if not_in_daterange:
+        warnings.warn(f"Error! base_date is out of sample date range... Defaulting to earliest available date in sample: {price.index.min()}. Otherwise, please use input date range between {price.index.min()} and {price.index.max()}")
+        base_date = price.index.min()
+        
+    # subset price data
+    if end_date is not None:
+        price = price[base_date:end_date] 
+    
+    else:
+        price = price[base_date:]   
+       
+    
+    # cumulative returns calculation
+    lret = np.log(price / price.shift(1))
+    cumlret = np.cumsum(lret)
+    cumret = np.exp(cumlret)
+    cumret.iloc[0] = 1 # set 
+    
+    il = cumret*rebase
+    
+    return il
+
+
+def compare_perf(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    portfolio_il = calc_il(portfolio, base_date, end_date, rebase)
+    benchmark_il = calc_il(benchmark, base_date, end_date, rebase)
+    
+    compare_il = pd.merge(portfolio_il.to_frame(),
+                          benchmark_il, 
+                          how='left',
+                          on='Date')
+    
+    return compare_il
+
+def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    """Generate plotly fig object that compares performance between benchmark and portfolio
+
+    Args:
+        portfolio (pd.Series): Timeseries of portfolio values (price)
+        benchmark (pd.Series): Timeseries of benchmark value (price)
+        base_date (str): Starting date of reference period
+        end_date (str, optional): Ending date of reference period. If None, default to last available date in sample data. Defaults to None.
+        rebase (int, optional): Reference level. Defaults to 1000.
+
+    Returns:
+        plotly.graph_objects.Figure: Plotly figure object 
+    """
+    
+    compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
+    
+    # plot covid data
+    fig = px.line(compare_il, width=800, height=400)
+    fig.add_hline(y=rebase, line_dash="dash", line_color="black", line_width=1) # rebase
+    fig.update_layout(title='Historical Performance',
+                        yaxis_title='Index Level',
+                        legend=dict(
+                            yanchor="top",
+                            y=0.99,
+                            xanchor="left",
+                            x=0.01,
+                            title=''
+                            )
+    )
     
     return fig
 
