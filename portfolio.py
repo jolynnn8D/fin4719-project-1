@@ -269,8 +269,10 @@ def return_heatmap(dates, asset_pr):
     
     # get year and month 
     asset_rt = data.asset_rt
-    year = data.Date.dt.strftime("%Y")
-    month = data.Date.dt.strftime("%m")
+    # year = data.Date.dt.strftime("%Y")
+    # month = data.Date.dt.strftime("%m")
+    year = data.Date.dt.year.astype(int)
+    month = data.Date.dt.month.astype(int)
     
     #reshape dataframe
     df = pd.DataFrame([year, month, asset_rt]).T
