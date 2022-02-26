@@ -269,8 +269,6 @@ def return_heatmap(dates, asset_pr):
     
     # get year and month 
     asset_rt = data.asset_rt
-    # year = data.Date.dt.strftime("%Y")
-    # month = data.Date.dt.strftime("%m")
     year = data.Date.dt.year.astype(int)
     month = data.Date.dt.month.astype(int)
     
@@ -280,7 +278,7 @@ def return_heatmap(dates, asset_pr):
     df = df.pivot_table(index='Year', columns='Month', values='Return')
     
     fig = px.imshow(df, labels=dict(x="Month", y="Year", color="Return"), title="Monthly Return Heatmap",
-                    color_continuous_scale ='RdYlGn' , color_continuous_midpoint = 0,
+                    color_continuous_scale =["red","white","green"] , color_continuous_midpoint = 0,
                     text_auto=True)
     
     return fig
@@ -421,7 +419,6 @@ def plot_weight_pie_charts(weight_dict):
         [(ticker, weight) for ticker,weight in weight_dict.items()],
         columns=['Ticker','Weight']
     )
-
     fig = px.pie(plt_data, values='Weight', names='Ticker', title='Constituents', hole=0.4)
     fig.update_traces(textinfo='label+percent')
     fig.update_layout(showlegend=False)
