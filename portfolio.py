@@ -45,13 +45,13 @@ def display():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.header("Portfolio Selection")
+        st.header("Portfolio Composition and Returns")
         
         st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
         # if st.session_state.risk == "Low":
         #     st.sidebar.checkbox("Short Selling", key="short_sell")
-        st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
+        st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
         
         st.markdown(f"##### **Expected Return: {round(st.session_state.expreturn*100, 2)}%**")
