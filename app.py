@@ -2,6 +2,7 @@ import streamlit as st
 
 import portfolio
 import earnings_strategy
+import summary
 
 # Page Config
 project_title = "FIN4719 Project 1"
@@ -12,6 +13,7 @@ st.set_page_config(page_title=project_title, layout="wide")
 st.sidebar.title("Features")
 
 pages = {
+        "Summary": summary, 
         "Portfolio Selection": portfolio,
         "Event Studies": earnings_strategy,
     }
