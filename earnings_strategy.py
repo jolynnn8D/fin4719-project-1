@@ -1,5 +1,5 @@
 
-import streamlit as st
+import streamlit
 import numpy as np
 import datetime as dt
 import yahoo_fin.stock_info as si
@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 import plotly.express as px 
 import warnings
 warnings.filterwarnings("ignore")
+
 
 
 ticker_choices = ['ANDE','DOW','GM','HWKN','JPM','NWN','SCVL','SRCE','TSLA', 'WMT']    
@@ -53,21 +54,12 @@ def display():
     st.plotly_chart(st.session_state.fig)
 
 
-    
-    
 winar_dict = {
     'winar5': [+1, +1],
     'winar6': [+2, +5],
     'winar7': [+2, +10],
     'winar8': [+2, +20],
     }
-
-# compute
-def compute(ticker, benchmark, start_date, end_date):
-    ticker = [ticker]
-    fig, annualized_returns = produce_portfolio(ticker, benchmark, start_date, end_date)
-    st.session_state.expreturn = annualized_returns
-    st.session_state.fig = fig
 
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):
