@@ -35,8 +35,12 @@ def display():
         st.session_state.ticker = "ANDE"
     if "st_start_date" not in st.session_state:
         st.session_state.st_start_date = dt.date.today() - relativedelta(years = 5)
-    if "cst_end_date" not in st.session_state:
+    if "st_end_date" not in st.session_state:
         st.session_state.st_end_date = dt.date.today()
+    if "fig" not in st.session_state or \
+        "expreturn" not in st.session_state:
+        Compute(st.session_state.ticker, benchmark, st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date)
+    
     
     # input widgets    
     st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
@@ -60,6 +64,13 @@ winar_dict = {
     'winar7': [+2, +10],
     'winar8': [+2, +20],
     }
+
+def Compute(ticker, benchmark, start_date, end_date):
+    ticker = [ticker]
+    st.session_state.fig, st.session_state.expreturn = produce_portfolio(ticker, benchmark, start_date, end_date)
+
+
+
 
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):
