@@ -1,5 +1,5 @@
 
-import streamlit as st
+import streamlit
 import numpy as np
 import datetime as dt
 import yahoo_fin.stock_info as si
@@ -14,13 +14,15 @@ import plotly.express as px
 import warnings
 warnings.filterwarnings("ignore")
 
-
 winar_dict = {
     'winar5': [+1, +1],
     'winar6': [+2, +5],
     'winar7': [+2, +10],
     'winar8': [+2, +20],
     }
+
+def display():
+    streamlit.subheader("Events")
 
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):

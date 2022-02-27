@@ -1,7 +1,7 @@
 import streamlit as st
 
 import portfolio
-import events
+import earnings_strategy
 
 # Page Config
 project_title = "FIN4719 Project 1"
@@ -13,7 +13,7 @@ st.sidebar.title("Features")
 
 pages = {
         "Portfolio Selection": portfolio,
-        "Event Studies": earnigns_strategy,
+        "Event Studies": earnings_strategy,
     }
 page = st.sidebar.radio("", tuple(pages.keys()))
 pages[page].display()
