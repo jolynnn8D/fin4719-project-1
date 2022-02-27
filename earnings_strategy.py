@@ -18,7 +18,7 @@ ticker_choices = ['ANDE','DOW','GM','HWKN','JPM','NWN','SCVL','SRCE','TSLA', 'WM
 benchmark = ['^GSPC']
 
 def display():
-    st.subheader("Active Investing Strategy")
+#     st.subheader("Active Investing Strategy")
 
 
     # buttons i'll add in later, ps went to sleep
@@ -41,21 +41,24 @@ def display():
         "expreturn" not in st.session_state:
         Compute(st.session_state.ticker, benchmark, st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date)
     
+    col1 = st.columns(1)
     
+    with col1:
     # input widgets    
-    st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
-    st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
-                          min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
-    st.sidebar.date_input("End Date", value = dt.date.today(), 
-                          min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
-    
-    st.sidebar.button("Compute", on_click=produce_portfolio, args=(st.session_state.ticker, benchmark, 
-                                                                   st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date))
+        st.header("Active Investing Strategy")
+        st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
+        st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
+                              min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
+        st.sidebar.date_input("End Date", value = dt.date.today(), 
+                              min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
 
-    # display
-    st.markdown(f"#### **Ticker: {st.session_state.ticker}**")
-    st.markdown(f"##### **Expected Return (Annualized): {round(st.session_state.expreturn, 2)}%**")
-    st.plotly_chart(st.session_state.fig)
+        st.sidebar.button("Compute", on_click=produce_portfolio, args=(st.session_state.ticker, benchmark, 
+                                                                       st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date))
+
+        # display
+        st.markdown(f"#### **Ticker: {st.session_state.ticker}**")
+        st.markdown(f"##### **Expected Return (Annualized): {round(st.session_state.expreturn, 2)}%**")
+        st.plotly_chart(st.session_state.fig)
 
 
 winar_dict = {
