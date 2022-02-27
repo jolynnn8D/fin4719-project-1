@@ -1,11 +1,11 @@
 
-import streamlit
+import streamlit as st
 import numpy as np
 import datetime as dt
 import yahoo_fin.stock_info as si
 import yfinance as yf
 from sklearn import linear_model
-import scipy.stats as st
+import scipy.stats as sc
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 import plotly.express as px 
@@ -16,19 +16,10 @@ warnings.filterwarnings("ignore")
 
 ticker_choices = ['ANDE','DOW','GM','HWKN','JPM','NWN','SCVL','SRCE','TSLA', 'WMT']    
 benchmark = ['^GSPC']
+strategy_choices = ['PEAD','Also PEAD', 'Also PEAD as well']
+
 
 def display():
-#     st.subheader("Active Investing Strategy")
-
-
-    # buttons i'll add in later, ps went to sleep
-    # date picker - from and to, up to 5 years from current date - done
-    # stock picker - choose from ticker_choices list - done
-    
-    # outputs to add in later
-    # historical backtest chart -- done
-    # expected returns annualized -- done
-    # strategy suggestion (e.g. buy on x day and sell on x day)
 
     # initialize values
     if "ticker" not in st.session_state:
@@ -37,27 +28,48 @@ def display():
         st.session_state.st_start_date = dt.date.today() - relativedelta(years = 5)
     if "st_end_date" not in st.session_state:
         st.session_state.st_end_date = dt.date.today()
+    if "strategy_type" not in st.session_state:
+        st.session_state.strategy_type = 'PEAD'
     if "fig" not in st.session_state or \
-        "expreturn" not in st.session_state:
+        "annualret" not in st.session_state or \
+        "msg_list" not in st.session_state:
         Compute(st.session_state.ticker, benchmark, st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date)
     
-    col1 = st.columns(1)
-    
-    with col1:
+
     # input widgets    
-        st.header("Active Investing Strategy")
-        st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
-        st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
-                              min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
-        st.sidebar.date_input("End Date", value = dt.date.today(), 
-                              min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
+    st.header("Active Investing Strategy")
+    st.sidebar.selectbox("Select a strategy type", strategy_choices, key='strategy_type')
+    st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
+    st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
+                            min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
+    st.sidebar.date_input("End Date", value = dt.date.today(), 
+                            min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
 
-        st.sidebar.button("Compute", on_click=produce_portfolio, args=(st.session_state.ticker, benchmark, 
-                                                                       st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date))
+    st.sidebar.button("Compute", on_click=Compute, args=(st.session_state.ticker, benchmark, 
+                                                                    st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date))
 
-        # display
-        st.markdown(f"#### **Ticker: {st.session_state.ticker}**")
-        st.markdown(f"##### **Expected Return (Annualized): {round(st.session_state.expreturn, 2)}%**")
+    # display
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric('Ticker', st.session_state.ticker)
+    col3.metric('Strategy Type', st.session_state.strategy_type)
+        
+    st.markdown(f"The following strategy uses the post earnings announcement drift using the average abnormal returns for each day after each positive earnings announcement." + 
+                    "An event studies was run to determine the possible strategies to be used for the stock. Only results that were statistically significant enough are included")
+
+    st.markdown(f"Our calculations suggest the following strategies for the stock:")
+    if st.session_state.fig ==' No suggested strategy for ' + st.session_state.ticker:
+            st.markdown(f" No suggested strategy for {st.session_state.ticker} using the selected time range as sample.")
+    else:
+        for msg in st.session_state.msg_list:
+            st.markdown(" - " + msg)
+
+    st.markdown("---")
+    col4, col5, col6 = st.columns(3)
+    col4.markdown(f"#### Historical Performance")
+    col6.metric(label="Expected Return (Annualized)", value = f"{round(st.session_state.annualret, 2)}%")
+
+    if st.session_state.fig != 'No suggested strategy for ' + st.session_state.ticker:
         st.plotly_chart(st.session_state.fig)
 
 
@@ -70,7 +82,7 @@ winar_dict = {
 
 def Compute(ticker, benchmark, start_date, end_date):
     ticker = [ticker]
-    st.session_state.fig, st.session_state.expreturn = produce_portfolio(ticker, benchmark, start_date, end_date)
+    st.session_state.msg_list, st.session_state.fig, st.session_state.annualret = produce_portfolio(ticker, benchmark, start_date, end_date)
 
 
 
@@ -78,6 +90,10 @@ def Compute(ticker, benchmark, start_date, end_date):
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):
     
+    if type(ticker_list) != list:
+        ticker_list = [ticker_list]
+    if type(benchmark) != list:
+        benchmark = [benchmark]
     data = yf.download(ticker_list + benchmark, start=start_date, end=end_date)
 
     main_data = data["Adj Close"] / data["Adj Close"].shift(1) - 1
@@ -236,7 +252,7 @@ def calculate_results(returns_df, surprise_df, benchmark):
     # Note method sf (survival function) from scipy.stats.t (or st.t) calculates P-values from T-stats
     # The method sf takes two arguments: T-statistic and degree of freedom, i.e., sf(absolute value of t-statistic, degree of freedom)
     # For one-tail test multiply the function output by 1, for two-tail test multiply it by 2
-    stats['P-Value']  = st.t.sf(np.abs(stats['T-Test']), len(cars)-1)*2
+    stats['P-Value']  = sc.t.sf(np.abs(stats['T-Test']), len(cars)-1)*2
 
     return stats
 
@@ -283,6 +299,18 @@ def get_strat(results, winar_dict = winar_dict):
             strategy_df = pd.concat([strategy_df, temp_strat])
             
     return strategy_df
+
+# strategy message
+def message_strategy(strategy_df):
+    strategy_output = []
+        
+    strat_dict = {'long': 'Buy', 'short': 'Sell', 'long_1': 'Sell', 'short_1': 'Buy'}
+    for index, row in strategy_df.iterrows():
+        
+        msg = strat_dict[row['strategy']] + ' on day T+' + str(row['start'] - 1) + ' and ' + strat_dict[row['strategy'] + '_1'] + ' on day T+' + str(row['end'])
+        strategy_output.append(msg)
+    
+    return strategy_output
 
 # get the dates to hold the stock
 def get_strat_dates(earnings, strategy_df):
@@ -356,11 +384,7 @@ def produce_portfolio(ticker_list, benchmark = ['^GSPC'], start_date = 'default 
         return 'No suggested strategy for ' + ticker_list[0], 0
     else:
         strategy_df = get_strat(results, winar_dict)
+        msg = message_strategy(strategy_df)    
         strat_dates = get_strat_dates(earnings, strategy_df)
         fig, annualized_return = get_portfolio(returns, strat_dates)
-        return fig, annualized_return
-
-    
-
-
-    
+        return msg, fig, annualized_return
