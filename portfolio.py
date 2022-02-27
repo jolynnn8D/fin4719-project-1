@@ -31,8 +31,8 @@ def display():
         st.session_state.theme = "ESG and Green Energy"
     if "risk" not in st.session_state:
         st.session_state.risk = "Low"
-    if "short_sell" not in st.session_state:
-        st.session_state.short_sell = True
+    # if "short_sell" not in st.session_state:
+    #     st.session_state.short_sell = True
     if "index_position" not in st.session_state:
         st.session_state.index_position = get_index_position(benchmark)
     if "weights" not in st.session_state or \
@@ -49,8 +49,8 @@ def display():
         
         st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
-        if st.session_state.risk == "Low":
-            st.sidebar.checkbox("Short Selling", key="short_sell")
+        # if st.session_state.risk == "Low":
+        #     st.sidebar.checkbox("Short Selling", key="short_sell")
         st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
         
@@ -58,7 +58,7 @@ def display():
         st.markdown(f"##### **Expected Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
-        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights))
+        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
@@ -75,6 +75,8 @@ def display():
         st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
         st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
         
+        """
+        # Historical Performance
         st.header("Historical Performance")
         st.plotly_chart(
             plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1], 
@@ -84,14 +86,14 @@ def display():
             plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1],
                                  base_date=covid_startdate, end_date=covid_enddate)
             )
-
+        """
 # Main computation functions
 def compute_theme(theme, risk):
     ticker_list = themes[theme]
     returns = get_returns(ticker_list, startdate, enddate)
     returns_without_date = returns.drop(columns=["Date"])
     if risk == "Low":
-        results = calculate_mvp(returns_without_date, st.session_state.short_sell)
+        results = calculate_mvp(returns_without_date)
         st.session_state.portfolio_type = "minimum variance portfolio"
     elif risk == "High":
         results = monte_carlo(returns_without_date, "sharpe")
@@ -111,7 +113,7 @@ def compute_theme(theme, risk):
     st.session_state.positions = get_positions(returns, st.session_state.weights)
     
 
-def calculate_mvp(returns, short_sell=True):
+def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
     num_stocks = len(returns.columns) # -1 if date column is present, else remove
     ones_arr = np.array([[1]] * num_stocks)
