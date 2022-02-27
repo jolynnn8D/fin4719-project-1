@@ -8,11 +8,51 @@ from sklearn import linear_model
 import scipy.stats as st
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-import matplotlib.pyplot as plt
 import plotly.express as px 
-
 import warnings
 warnings.filterwarnings("ignore")
+
+
+
+ticker_choices = ['ANDE','DOW','GM','HWKN','JPM','NWN','SCVL','SRCE','TSLA', 'WMT']    
+benchmark = ['^GSPC']
+
+def display():
+    st.subheader("Active Investing Strategy")
+
+
+    # buttons i'll add in later, ps went to sleep
+    # date picker - from and to, up to 5 years from current date - done
+    # stock picker - choose from ticker_choices list - done
+    
+    # outputs to add in later
+    # historical backtest chart -- done
+    # expected returns annualized -- done
+    # strategy suggestion (e.g. buy on x day and sell on x day)
+
+    # initialize values
+    if "ticker" not in st.session_state:
+        st.session_state.ticker = "ANDE"
+    if "st_start_date" not in st.session_state:
+        st.session_state.st_start_date = dt.date.today() - relativedelta(years = 5)
+    if "cst_end_date" not in st.session_state:
+        st.session_state.st_end_date = dt.date.today()
+    
+    # input widgets    
+    st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
+    st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
+                          min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
+    st.sidebar.date_input("End Date", value = dt.date.today(), 
+                          min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
+    
+    st.sidebar.button("Compute", on_click=produce_portfolio, args=(st.session_state.ticker, benchmark, 
+                                                                   st.session_state.st_start_date - relativedelta(years = 1), st.session_state.st_end_date))
+
+    # display
+    st.markdown(f"#### **Ticker: {st.session_state.ticker}**")
+    st.markdown(f"##### **Expected Return (Annualized): {round(st.session_state.expreturn, 2)}%**")
+    st.plotly_chart(st.session_state.fig)
+
 
 winar_dict = {
     'winar5': [+1, +1],
@@ -20,9 +60,6 @@ winar_dict = {
     'winar7': [+2, +10],
     'winar8': [+2, +20],
     }
-
-def display():
-    streamlit.subheader("Events")
 
 # get returns data
 def get_returns(ticker_list, benchmark, start_date, end_date):
@@ -256,7 +293,7 @@ def get_strat_dates(earnings, strategy_df):
     return strat_dates
 
 
-# generate the portfolio results in a graph
+# generate the portfolio results in a graph and get the annualized returns
 def get_portfolio(returns, strat_dates):
     portfolio_df = returns.merge(strat_dates, on=['Date'])
     ticker = portfolio_df['ticker'][0]
@@ -284,7 +321,13 @@ def get_portfolio(returns, strat_dates):
                         )
     )
 
-    return fig
+    portfolio_summary = pd.concat([portfolio_value.head(1), portfolio_value.tail(1)])
+    portfolio_returns = portfolio_summary[ticker].max()
+    date_diff = int((portfolio_summary.index.max() - portfolio_summary.index.min()) / np.timedelta64(1,'D'))
+    total_years = date_diff / 365
+    annualized_return = ((portfolio_returns**(1/total_years)) - 1) * 100
+
+    return fig, annualized_return
 
 
 # full run function for everything
@@ -296,10 +339,14 @@ def produce_portfolio(ticker_list, benchmark = ['^GSPC'], start_date = 'default 
     returns, earnings, results = event_study(ticker_list, benchmark, start_date, end_date)
     
     if results.empty:
-        return 'No suggested strategy for ' + ticker_list[0]
+        return 'No suggested strategy for ' + ticker_list[0], 0
     else:
         strategy_df = get_strat(results, winar_dict)
         strat_dates = get_strat_dates(earnings, strategy_df)
-        return get_portfolio(returns, strat_dates)
+        fig, annualized_return = get_portfolio(returns, strat_dates)
+        return fig, annualized_return
+
+    
+
 
     
