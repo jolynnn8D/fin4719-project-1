@@ -59,11 +59,13 @@ def display():
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
+        
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
 
         st.subheader("")
+        
     
     with col2:
         st.header("Analytics")
@@ -112,6 +114,20 @@ def compute_theme(theme, risk):
     st.session_state.expvar = expected_variance
     st.session_state.positions = get_positions(returns, st.session_state.weights)
     
+    # calculate 1,3,5 year annualized returns
+    ann_ret_list = []
+    for i in [1,3,5]:
+        ann_ret = annualize_ret(returns['NormReturns'], n_years=i)
+        ann_ret_list.append(ann_ret)
+    since_incep_ret = annualize_ret(returns['NormReturns'], n_years=i)
+    
+    ann_ret_dict = {
+        "ann_ret_1yr" : ann_ret_list[0],
+        "ann_ret_3yr" : ann_ret_list[1],
+        "ann_ret_5yr" : ann_ret_list[2],
+        "since_incep_ret" : since_incep_ret
+    }
+    st.session_state.ann_ret_dict = ann_ret_dict
 
 def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
@@ -161,6 +177,27 @@ def monte_carlo(returns, type="sharpe", n=1000):
 
     return (best_weights, expected_return, expected_variance)
 
+
+def annualize_ret(ret, n_years=None):
+    """Calculate annualized returns for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_years (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        float: Annualized returns over n years
+    """
+    ret = ret.values
+    n_trading_days = 252*n_years
+    
+    if n_years is None:
+        ann_ret = ret.prod() ** (252 / n_trading_days) - 1
+        
+    else:
+        ann_ret = ret[-n_trading_days:].prod() ** (252 / n_trading_days) - 1
+    
+    return ann_ret
  
  
 ### Utils and Organizing Data ###
