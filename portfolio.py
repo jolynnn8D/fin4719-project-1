@@ -1,3 +1,4 @@
+import warnings
 import streamlit as st
 import yahoo_fin.stock_info as si
 import yfinance as yf
@@ -17,6 +18,9 @@ themes = {
 
 startdate = "2015-01-01"
 enddate = "2021-12-31"
+base_date = "2019-01-01"
+covid_startdate = "2020-02-28"
+covid_enddate = "2021-09-30"
 benchmark = "^GSPC"
 value_key = f"{benchmark} Value"
 
@@ -27,8 +31,8 @@ def display():
         st.session_state.theme = "ESG and Green Energy"
     if "risk" not in st.session_state:
         st.session_state.risk = "Low"
-    if "short_sell" not in st.session_state:
-        st.session_state.short_sell = True
+    # if "short_sell" not in st.session_state:
+    #     st.session_state.short_sell = True
     if "index_position" not in st.session_state:
         st.session_state.index_position = get_index_position(benchmark)
     if "weights" not in st.session_state or \
@@ -45,8 +49,8 @@ def display():
         
         st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
-        if st.session_state.risk == "Low":
-            st.sidebar.checkbox("Short Selling", key="short_sell")
+        # if st.session_state.risk == "Low":
+        #     st.sidebar.checkbox("Short Selling", key="short_sell")
         st.sidebar.button("Compute", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
 
         
@@ -54,6 +58,7 @@ def display():
         st.markdown(f"##### **Expected Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
+        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
@@ -69,14 +74,26 @@ def display():
         df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
         st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
         st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
-
+        
+        """
+        # Historical Performance
+        st.header("Historical Performance")
+        st.plotly_chart(
+            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1], 
+                                 base_date=base_date)
+            )
+        st.plotly_chart(
+            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1],
+                                 base_date=covid_startdate, end_date=covid_enddate)
+            )
+        """
 # Main computation functions
 def compute_theme(theme, risk):
     ticker_list = themes[theme]
     returns = get_returns(ticker_list, startdate, enddate)
     returns_without_date = returns.drop(columns=["Date"])
     if risk == "Low":
-        results = calculate_mvp(returns_without_date, st.session_state.short_sell)
+        results = calculate_mvp(returns_without_date)
         st.session_state.portfolio_type = "minimum variance portfolio"
     elif risk == "High":
         results = monte_carlo(returns_without_date, "sharpe")
@@ -96,7 +113,7 @@ def compute_theme(theme, risk):
     st.session_state.positions = get_positions(returns, st.session_state.weights)
     
 
-def calculate_mvp(returns, short_sell=True):
+def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
     num_stocks = len(returns.columns) # -1 if date column is present, else remove
     ones_arr = np.array([[1]] * num_stocks)
@@ -254,8 +271,10 @@ def return_heatmap(dates, asset_pr):
     
     # get year and month 
     asset_rt = data.asset_rt
-    year = data.Date.dt.strftime("%Y")
-    month = data.Date.dt.strftime("%m")
+    # year = data.Date.dt.strftime("%Y")
+    # month = data.Date.dt.strftime("%m")
+    year = data.Date.dt.year.astype(int)
+    month = data.Date.dt.month.astype(int)
     
     #reshape dataframe
     df = pd.DataFrame([year, month, asset_rt]).T
@@ -281,17 +300,132 @@ def return_barchart(dates, asset_pr):
     # find asset monthly retrun
     data['asset_rt'] = data.asset_pr.pct_change()*100
     data['asset_rt'] = data['asset_rt'].round(2)
-    data.dropna()
-    
+    data.dropna(inplace=True)
+       
     # get year and month 
     asset_rt = data.asset_rt
-    year = data.Date.dt.strftime("%Y")
+    # year = data.Date.dt.strftime("%Y")
+    year = data.Date.dt.year.astype(int)
     
     #reshape dataframe
     df = pd.DataFrame([year[1:], asset_rt]).T
     df.columns = ['Year', 'Return']
+
+    # create negative ret flag
+    df['is_negative']  = np.where(df['Return'] < 0, True , False)
     
-    fig = px.bar(df, x='Return', y='Year', orientation='h', title="Monthly Return Barchart", text_auto = True)
+    color_mapping = {
+        True : "red",
+        False : "green"
+    }
+    
+    fig = px.bar(
+        df, 
+        x='Return', 
+        y='Year', 
+        color='is_negative',
+        color_discrete_map=color_mapping,
+        orientation='h', 
+        title="Monthly Return Barchart", 
+        text_auto=True)
+    fig.update_layout(showlegend=False)
+    fig.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
     
     return fig
 
+
+# input price series with date set as index
+def calc_il(price, base_date=None, end_date=None, rebase=1000):
+    """Calculate index level
+
+    Args:
+        price (pd.Series): Single price series with date set as index
+        base_date (str): Start date of the reference period for calculating index levels. If None, take the earliest available date in price sample. Defaults to None.
+        end_date (str, optional): Ending date of reference period for calculating index levels. If None, take the last available date in price sample. Defaults to None.
+        rebase (int, optional): Starting index level. Defaults to 1000.
+
+    Returns:
+        pd.Series: Timeseries of index levels
+    """
+    not_in_daterange = (pd.to_datetime(base_date) < price.index.min())
+    
+    # check if base_date is within sample date range in price series
+    if not_in_daterange:
+        warnings.warn(f"Error! base_date is out of sample date range... Defaulting to earliest available date in sample: {price.index.min()}. Otherwise, please use input date range between {price.index.min()} and {price.index.max()}")
+        base_date = price.index.min()
+        
+    # subset price data
+    if end_date is not None:
+        price = price[base_date:end_date] 
+    
+    else:
+        price = price[base_date:]   
+       
+    
+    # cumulative returns calculation
+    lret = np.log(price / price.shift(1))
+    cumlret = np.cumsum(lret)
+    cumret = np.exp(cumlret)
+    cumret.iloc[0] = 1 # set 
+    
+    il = cumret*rebase
+    
+    return il
+
+
+def compare_perf(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    portfolio_il = calc_il(portfolio, base_date, end_date, rebase)
+    benchmark_il = calc_il(benchmark, base_date, end_date, rebase)
+    
+    compare_il = pd.merge(portfolio_il.to_frame(),
+                          benchmark_il, 
+                          how='left',
+                          on='Date')
+    
+    return compare_il
+
+def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    """Generate plotly fig object that compares performance between benchmark and portfolio
+
+    Args:
+        portfolio (pd.Series): Timeseries of portfolio values (price)
+        benchmark (pd.Series): Timeseries of benchmark value (price)
+        base_date (str): Starting date of reference period
+        end_date (str, optional): Ending date of reference period. If None, default to last available date in sample data. Defaults to None.
+        rebase (int, optional): Reference level. Defaults to 1000.
+
+    Returns:
+        plotly.graph_objects.Figure: Plotly figure object 
+    """
+    
+    compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
+    
+    # plot covid data
+    fig = px.line(compare_il, width=800, height=400)
+    fig.add_hline(y=rebase, line_dash="dash", line_color="black", line_width=1) # rebase
+    fig.update_layout(title='Historical Performance',
+                        yaxis_title='Index Level',
+                        legend=dict(
+                            yanchor="top",
+                            y=0.99,
+                            xanchor="left",
+                            x=0.01,
+                            title=''
+                            )
+    )
+    
+    return fig
+
+
+def plot_weight_pie_charts(weight_dict):
+    
+    plt_data = pd.DataFrame(
+        [(ticker, weight) for ticker,weight in weight_dict.items()],
+        columns=['Ticker','Weight']
+    )
+
+    fig = px.pie(plt_data, values='Weight', names='Ticker', title='Constituents', hole=0.4)
+    fig.update_traces(textinfo='label+percent')
+    fig.update_layout(showlegend=False)
+    
+    return fig
