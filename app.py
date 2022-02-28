@@ -14,8 +14,8 @@ st.sidebar.title("Features")
 
 pages = {
         "Summary": summary, 
-        "Portfolio Selection": portfolio,
-        "Event Studies": earnings_strategy,
+        "PaGrowth": portfolio,
+        "QuantiFi": earnings_strategy,
     }
 page = st.sidebar.radio("", tuple(pages.keys()))
 pages[page].display()
