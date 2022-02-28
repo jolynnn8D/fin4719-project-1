@@ -43,22 +43,22 @@ def display():
         compute_theme(st.session_state.theme, st.session_state.risk)
     
     col1, col2 = st.columns(2)
-
     with col1:
         st.header("Portfolio Composition and Returns")
-        
         st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
         # if st.session_state.risk == "Low":
         #     st.sidebar.checkbox("Short Selling", key="short_sell")
         st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
-
-        
         st.markdown(f"##### **Historical Mean Return: {round(st.session_state.expreturn*100, 2)}%**")
         st.markdown(f"##### **Historical Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
+
+        for field, df in st.session_state.combined_analytics.items():
+            st.markdown(f"##### {field}")
+            st.dataframe(df)
         
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
@@ -76,6 +76,8 @@ def display():
         st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
         st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
         
+
+        
         """
         # Historical Performance
         st.header("Historical Performance")
@@ -88,6 +90,7 @@ def display():
                                  base_date=covid_startdate, end_date=covid_enddate)
             )
         """
+
 # Main computation functions
 def compute_theme(theme, risk):
     ticker_list = themes[theme]
@@ -112,22 +115,16 @@ def compute_theme(theme, risk):
     st.session_state.expreturn = expected_return
     st.session_state.expvar = expected_variance
     st.session_state.positions = get_positions(returns, st.session_state.weights)
-    
-    # calculate 1,3,5 year annualized returns
-    # ann_ret_list = []
-    # for i in [1,3,5]:
-    #     ann_ret = annualize_ret(returns['NormReturns'], n_days=i)
-    #     ann_ret_list.append(ann_ret)
-    # since_incep_ret = annualize_ret(returns['NormReturns'], n_days=i)
-    
-    # ann_ret_dict = {
-    #     "ann_ret_1yr" : ann_ret_list[0],
-    #     "ann_ret_3yr" : ann_ret_list[1],
-    #     "ann_ret_5yr" : ann_ret_list[2],
-    #     "since_incep_ret" : since_incep_ret
-    # }
-    # st.session_state.ann_ret_dict = ann_ret_dict
 
+    benchmark_ret = st.session_state.index_position.iloc[:, :2].set_index('Date')    
+    portfolio_ret = returns.set_index('Date').loc[:, 'NormReturns']
+    portfolio_analytics = calc_portfolio_analytics(portfolio_ret, df_label=st.session_state.theme)
+    benchmark_analytics= calc_portfolio_analytics(benchmark_ret, df_label=benchmark)
+    
+    st.session_state.combined_analytics = compile_analytics(portfolio_analytics, benchmark_analytics)
+
+        
+    
 def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
     num_stocks = len(returns.columns) # -1 if date column is present, else remove
