@@ -69,8 +69,8 @@ def display():
             st.subheader(theme)
             # st.markdown("##### **Low Risk**")
             st.markdown(f"*{investment_obj[theme]}*")
-            st.markdown(f"**Expected Return: {round(risk_result[theme][1]*100, 2)}%**")
-            st.markdown(f"**Expected Variance: {round(risk_result[theme][2]*100, 2)}%**")
+            st.markdown(f"**Historical Mean Return: {round(risk_result[theme][1]*100, 2)}%**")
+            st.markdown(f"**Historical Variance: {round(risk_result[theme][2]*100, 2)}%**")
             st.number_input("Your stake: ", min_value=0.0, max_value=1.0, value=1/3, key=theme +"_weights")
             # st.markdown("##### **High Risk**")
             # st.markdown(f"**Expected Return: {round(risk_result[theme][1]*100, 2)}%**")
@@ -84,8 +84,8 @@ def display():
     
     
     # sanity check total weights
-    if sum(theme_w) > 1:
-        st.markdown("<span style='color:red'> Warning! Total weight allocated exceed 1. Please re-allocate portfolio weights.</span>")
+    if sum(theme_w) != 1:
+        st.markdown("<span style='color:red'> Warning! Total weight allocated exceed 1. Please re-allocate portfolio weights.</span>", unsafe_allow_html=True)
     st.markdown("---")
     
     # create blended portfolio
@@ -112,7 +112,7 @@ def display():
     with analytics_col:
         for field, df in combined_analytics.items():
             st.markdown(f"##### {field}")
-            st.dataframe(df)
+            st.dataframe(df, height = 1600)
 
     
     with weights_col:
