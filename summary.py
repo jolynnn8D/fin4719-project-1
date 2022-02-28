@@ -3,26 +3,19 @@ import numpy as np
 import pandas as pd
 import json
 import portfolio 
+import configuration
 
-themes = {
-    "ESG and Green Energy": ["ICLN", "PBW", "TAN"],
-    "Tech": ["BOTZ", "ARKW", "KWEB"],
-    "Value": ["AAPL", "MSFT", "AMZN", "NFLX"]
-}
-
-with open('investment_obj.json', 'rb') as f:
-     investment_obj = json.load(f)
-
-
-startdate = "2015-01-01"
-enddate = "2021-12-31"
+benchmark = configuration.config["benchmark"]
+startdate = configuration.config["startdate"]
+enddate = configuration.config["enddate"]
+themes = configuration.config["funds"]
 
 risk_options = ['Low','High']
 
 def display():
     
     if "index_position" not in st.session_state:
-        st.session_state.index_position = portfolio.get_index_position(portfolio.benchmark)
+        st.session_state.index_position = portfolio.get_index_position(benchmark)
     
     st.header("Welcome to Sleep Wellth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
@@ -30,9 +23,8 @@ def display():
 
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
-        for theme, tickers in themes.items():
-            returns = portfolio.get_returns(tickers, startdate, enddate)
-            # returns_without_date = returns.drop(columns=["Date"])
+        for theme, details in themes.items():
+            returns = portfolio.get_returns(details["tickers"], startdate, enddate)
             st.session_state.returns_data[theme] = returns.set_index('Date')
 
     low_risk, high_risk = generate_summary()
@@ -46,10 +38,10 @@ def display():
         elif risk_level == 'High':
             risk_result = high_risk
             
-        for theme, tickers in themes.items():
+        for theme, details in themes.items():
             constituent_ret = st.session_state.returns_data[theme]
             w = risk_result[theme][0] # extract weights from results dictionary
-            theme_portfolio_ret = (constituent_ret[tickers] * w).sum(axis=1) # calculate portfolio returns
+            theme_portfolio_ret = (constituent_ret[details["tickers"]] * w).sum(axis=1) # calculate portfolio returns
             portfolio_ret_dict[theme] = theme_portfolio_ret
         
         portfolio_risk_ret_dict[risk_level] = portfolio_ret_dict # store portfolio returns at each risk level
@@ -68,7 +60,8 @@ def display():
         with portfolios[column]:
             st.subheader(theme)
             # st.markdown("##### **Low Risk**")
-            st.markdown(f"*{investment_obj[theme]}*")
+            description = themes[theme]["description"]
+            st.markdown(f"*{description}*")
             st.markdown(f"**Historical Mean Return: {round(risk_result[theme][1]*100, 2)}%**")
             st.markdown(f"**Historical Variance: {round(risk_result[theme][2]*100, 2)}%**")
             st.number_input("Your stake: ", min_value=0.0, max_value=1.0, value=1/3, key=theme +"_weights")
