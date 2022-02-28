@@ -29,12 +29,12 @@ def display():
         with portfolios[column]:
             st.subheader(theme)
             st.markdown("##### **Low Risk**")
-            st.markdown(f"**Expected Return: {round(low_risk[theme][1]*100, 2)}%**")
-            st.markdown(f"**Expected Variance: {round(low_risk[theme][2]*100, 2)}%**")
+            st.markdown(f"**Historical Mean Return: {round(low_risk[theme][1]*100, 2)}%**")
+            st.markdown(f"**Historical Variance: {round(low_risk[theme][2]*100, 2)}%**")
             st.number_input("Your stake: ", min_value=0.0, max_value=1.0, value=1/6, key=theme +"_low")
             st.markdown("##### **High Risk**")
-            st.markdown(f"**Expected Return: {round(high_risk[theme][1]*100, 2)}%**")
-            st.markdown(f"**Expected Variance: {round(high_risk[theme][2]*100, 2)}%**")
+            st.markdown(f"**Historical Mean Return: {round(high_risk[theme][1]*100, 2)}%**")
+            st.markdown(f"**Historical Variance: {round(high_risk[theme][2]*100, 2)}%**")
             st.number_input("Your stake: ", min_value=0.0, max_value=1.0, value=1/6, key=theme +"_high")
 
         column += 1
