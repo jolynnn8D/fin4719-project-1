@@ -40,9 +40,9 @@ def display():
     st.header("QuantiFi")
     st.sidebar.selectbox("Select a strategy type", strategy_choices, key='strategy_type')
     st.sidebar.selectbox("Select a stock", ticker_choices, key='ticker')          #stock picker
-    st.sidebar.date_input("Start Date", value = dt.date.today() - relativedelta(years = 5), 
+    st.sidebar.date_input("Start Date", 
                             min_value = dt.date.today() - relativedelta(years = 5), max_value = dt.date.today(), key="st_start_date")
-    st.sidebar.date_input("End Date", value = dt.date.today(), 
+    st.sidebar.date_input("End Date", 
                             min_value = st.session_state.st_start_date, max_value = dt.date.today(), key="st_end_date")
 
     st.sidebar.button("Compute", on_click=Compute, args=(st.session_state.ticker, benchmark, 
