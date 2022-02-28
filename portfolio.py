@@ -458,7 +458,7 @@ def return_barchart(dates, asset_pr):
 
 
 # input price series with date set as index
-def calc_il(price, base_date=None, end_date=None, rebase=1000):
+def calc_il_price(price, base_date=None, end_date=None, rebase=1000):
     """Calculate index level
 
     Args:
@@ -483,12 +483,47 @@ def calc_il(price, base_date=None, end_date=None, rebase=1000):
     
     else:
         price = price[base_date:]   
-       
     
     # cumulative returns calculation
     lret = np.log(price / price.shift(1))
     cumlret = np.cumsum(lret)
     cumret = np.exp(cumlret)
+    cumret.iloc[0] = 1 # set 
+    
+    il = cumret*rebase
+    
+    return il
+
+# input price series with date set as index
+def calc_il(ret, base_date=None, end_date=None, rebase=1000):
+    """Calculate index level
+
+    Args:
+        returns (pd.Series): Single simple returns series with date set as index
+        base_date (str): Start date of the reference period for calculating index levels. If None, take the earliest available date in price sample. Defaults to None.
+        end_date (str, optional): Ending date of reference period for calculating index levels. If None, take the last available date in price sample. Defaults to None.
+        rebase (int, optional): Starting index level. Defaults to 1000.
+
+    Returns:
+        pd.Series: Timeseries of index levels
+    """
+    not_in_daterange = (pd.to_datetime(base_date) < ret.index.min())
+    
+    # check if base_date is within sample date range in price series
+    if not_in_daterange:
+        warnings.warn(f"Error! base_date is out of sample date range... Defaulting to earliest available date in sample: {ret.index.min()}. Otherwise, please use input date range between {ret.index.min()} and {ret.index.max()}")
+        base_date = ret.index.min()
+        
+    # subset price data
+    if end_date is not None:
+        ret = ret[base_date:end_date] 
+    
+    else:
+        ret = ret[base_date:]   
+       
+    
+    # cumulative returns calculation
+    cumret = np.cumprod(ret)
     cumret.iloc[0] = 1 # set 
     
     il = cumret*rebase
@@ -524,10 +559,9 @@ def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=
     compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
     
     # plot covid data
-    fig = px.line(compare_il, width=800, height=400)
+    fig = px.line(compare_il)
     fig.add_hline(y=rebase, line_dash="dash", line_color="black", line_width=1) # rebase
-    fig.update_layout(title='Historical Performance',
-                        yaxis_title='Index Level',
+    fig.update_layout(yaxis_title='Index Level',
                         legend=dict(
                             yanchor="top",
                             y=0.99,
