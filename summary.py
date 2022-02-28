@@ -24,7 +24,7 @@ def display():
     if "index_position" not in st.session_state:
         st.session_state.index_position = portfolio.get_index_position(portfolio.benchmark)
     
-    st.header("Welcome to Sleep Wealth.")
+    st.header("Welcome to Sleep Wellth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
 
