@@ -113,7 +113,12 @@ def display():
     with analytics_col:
         for field, df in combined_analytics.items():
             st.markdown(f"##### {field}")
-            st.dataframe(df, height = 1600)
+            if field !="Sharpe Ratio":
+                df = df.multiply(100)
+                df = df.applymap("{0:.2f}%".format)
+            else:    
+                df = df.applymap("{0:.3f}".format)
+            st.dataframe(df.style)
 
     
     with weights_col:
