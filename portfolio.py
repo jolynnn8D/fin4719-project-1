@@ -47,7 +47,7 @@ def display():
     with col1:
         st.header("Portfolio Composition and Returns")
         
-        st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
+        st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
         # if st.session_state.risk == "Low":
         #     st.sidebar.checkbox("Short Selling", key="short_sell")
@@ -55,16 +55,15 @@ def display():
 
         
         st.markdown(f"##### **Historical Mean Return: {round(st.session_state.expreturn*100, 2)}%**")
-        st.markdown(f"##### **Volatility: {round(st.session_state.expvar*100, 2)}%**")
+        st.markdown(f"##### **Historical Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
+        
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
 
-        st.subheader("")
-    
     with col2:
         st.header("Analytics")
         df = st.session_state.positions.reset_index()
@@ -112,6 +111,20 @@ def compute_theme(theme, risk):
     st.session_state.expvar = expected_variance
     st.session_state.positions = get_positions(returns, st.session_state.weights)
     
+    # calculate 1,3,5 year annualized returns
+    # ann_ret_list = []
+    # for i in [1,3,5]:
+    #     ann_ret = annualize_ret(returns['NormReturns'], n_days=i)
+    #     ann_ret_list.append(ann_ret)
+    # since_incep_ret = annualize_ret(returns['NormReturns'], n_days=i)
+    
+    # ann_ret_dict = {
+    #     "ann_ret_1yr" : ann_ret_list[0],
+    #     "ann_ret_3yr" : ann_ret_list[1],
+    #     "ann_ret_5yr" : ann_ret_list[2],
+    #     "since_incep_ret" : since_incep_ret
+    # }
+    # st.session_state.ann_ret_dict = ann_ret_dict
 
 def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
@@ -161,8 +174,117 @@ def monte_carlo(returns, type="sharpe", n=1000):
 
     return (best_weights, expected_return, expected_variance)
 
+
+def annualize_ret(ret, n_days=None):
+    """Calculate annualized returns for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        float: Annualized returns over n years
+    """
+    ret = ret.values
+    n_trading_days = int(252*n_days)
+    if n_days is None:
+        obs = ret
+    else:
+        obs = ret[-n_trading_days:]
+    
+    cumret = ret[-n_trading_days:].prod()
+    ann_ret =  cumret ** (252 / n_trading_days) - 1
+    
+    return ann_ret
+
+
+def annualize_std(ret, n_days=None):
+    """Annualize standard deviation for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        float: Annualized standard deviation over n years
+    """
+    ret = ret.values
+    n_trading_days = int(252*n_days)
+    
+    if n_days is None:
+        obs = ret
+        
+    else:
+        obs = ret[-n_trading_days:]
+        
+    std = obs.std()
+    ann_std = std * np.sqrt(252 / n_trading_days) 
+    
+    return ann_std
+
+def annualize_sharpe_ratio(ann_ret, ann_std, rf=0):
+    return (ann_ret-rf) / ann_std
+    
  
- 
+def calc_portfolio_analytics(ret, df_label='Benchmark'):
+    """Calculate annualized portfolio analytics for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        pd.DataFrame: Annualized portfolio analytics
+    """
+    
+    ann_ret_dict = {
+        "3 Month" : annualize_ret(ret, n_days=252/4),
+        "6 Month" : annualize_ret(ret, n_days=252/2),
+        "1 Year" : annualize_ret(ret, n_days=252),
+        "3 Year" : annualize_ret(ret, n_days=252*3),
+        "5 Year" : annualize_ret(ret, n_days=252*5)
+    }
+    
+    ann_std_dict = {
+        "3 Month" : annualize_std(ret, n_days=252/4),
+        "6 Month" : annualize_std(ret, n_days=252/2),
+        "1 Year" : annualize_std(ret, n_days=252),
+        "3 Year" : annualize_std(ret, n_days=252*3),
+        "5 Year" : annualize_std(ret, n_days=252*5)
+    }
+    
+    ann_sr_dict = {
+        "3 Month" : annualize_sharpe_ratio(ann_ret_dict["3 Month"], ann_std_dict["3 Month"]),
+        "6 Month" : annualize_sharpe_ratio(ann_ret_dict["6 Month"], ann_std_dict["6 Month"]),
+        "1 Year" : annualize_sharpe_ratio(ann_ret_dict["1 Year"], ann_std_dict["1 Year"]),
+        "3 Year" : annualize_sharpe_ratio(ann_ret_dict["3 Year"], ann_std_dict["3 Year"]),
+        "5 Year" : annualize_sharpe_ratio(ann_ret_dict["5 Year"], ann_std_dict["5 Year"])
+    }
+    
+    fields = ['Returns','Volatility','Sharpe Ratio']
+    analytics = pd.DataFrame([ann_ret_dict, ann_std_dict, ann_sr_dict],
+                              index = fields)
+
+    analytics.name = df_label
+    
+    return analytics
+    
+
+def compile_analytics(pf_analytics1, pf_analytics2):
+    """Compile analytics using dataframe generated from `calc_portfolio_analytics()`"""
+    
+    label1 = pf_analytics1.name
+    label2 = pf_analytics2.name
+    
+    analytics_dict = {}
+    for field in ['Returns','Volatility','Sharpe Ratio']:
+        tbl = pd.concat([pf_analytics1.loc[[field]],pf_analytics2.loc[[field]]])
+        tbl.index = [label1,label2]
+        tbl.columns.name = field
+        analytics_dict[field] = tbl
+    
+    return analytics_dict
+
 ### Utils and Organizing Data ###
 def get_returns(tickers, startdate, enddate):
     data = yf.download(tickers, start=startdate, end=enddate)
@@ -184,7 +306,7 @@ def get_positions(returns, weights):
         returns.loc[i, 'Portfolio Value'] = returns.loc[i-1, 'Portfolio Value'] * returns.loc[i, 'NormReturns']
 
  
-    positions = pd.concat([returns, st.session_state.index_position], axis=1)
+    positions = pd.concat([returns, st.session_state.index_position[value_key]], axis=1)
     positions = positions.set_index("Date")
     return positions[["Portfolio Value", value_key]]
 
@@ -195,7 +317,7 @@ def get_index_position(benchmark):
     returns.loc[0, value_key] = 100 * returns.loc[0, benchmark]
     for i in range(1, len(returns)):
         returns.loc[i, value_key] = returns.loc[i-1, value_key] * returns.loc[i, benchmark]
-    return returns[value_key]
+    return returns
 
 ### Analytics ###
 
@@ -333,7 +455,7 @@ def return_barchart(dates, asset_pr):
 
 
 # input price series with date set as index
-def calc_il(price, base_date=None, end_date=None, rebase=1000):
+def calc_il_price(price, base_date=None, end_date=None, rebase=1000):
     """Calculate index level
 
     Args:
@@ -358,12 +480,47 @@ def calc_il(price, base_date=None, end_date=None, rebase=1000):
     
     else:
         price = price[base_date:]   
-       
     
     # cumulative returns calculation
     lret = np.log(price / price.shift(1))
     cumlret = np.cumsum(lret)
     cumret = np.exp(cumlret)
+    cumret.iloc[0] = 1 # set 
+    
+    il = cumret*rebase
+    
+    return il
+
+# input price series with date set as index
+def calc_il(ret, base_date=None, end_date=None, rebase=1000):
+    """Calculate index level
+
+    Args:
+        returns (pd.Series): Single simple returns series with date set as index
+        base_date (str): Start date of the reference period for calculating index levels. If None, take the earliest available date in price sample. Defaults to None.
+        end_date (str, optional): Ending date of reference period for calculating index levels. If None, take the last available date in price sample. Defaults to None.
+        rebase (int, optional): Starting index level. Defaults to 1000.
+
+    Returns:
+        pd.Series: Timeseries of index levels
+    """
+    not_in_daterange = (pd.to_datetime(base_date) < ret.index.min())
+    
+    # check if base_date is within sample date range in price series
+    if not_in_daterange:
+        warnings.warn(f"Error! base_date is out of sample date range... Defaulting to earliest available date in sample: {ret.index.min()}. Otherwise, please use input date range between {ret.index.min()} and {ret.index.max()}")
+        base_date = ret.index.min()
+        
+    # subset price data
+    if end_date is not None:
+        ret = ret[base_date:end_date] 
+    
+    else:
+        ret = ret[base_date:]   
+       
+    
+    # cumulative returns calculation
+    cumret = np.cumprod(ret)
     cumret.iloc[0] = 1 # set 
     
     il = cumret*rebase
@@ -399,10 +556,9 @@ def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=
     compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
     
     # plot covid data
-    fig = px.line(compare_il, width=800, height=400)
+    fig = px.line(compare_il)
     fig.add_hline(y=rebase, line_dash="dash", line_color="black", line_width=1) # rebase
-    fig.update_layout(title='Historical Performance',
-                        yaxis_title='Index Level',
+    fig.update_layout(yaxis_title='Index Level',
                         legend=dict(
                             yanchor="top",
                             y=0.99,
@@ -421,7 +577,7 @@ def plot_weight_pie_charts(weight_dict):
         [(ticker, weight) for ticker,weight in weight_dict.items()],
         columns=['Ticker','Weight']
     )
-    fig = px.pie(plt_data, values='Weight', names='Ticker', title='Constituents', hole=0.4)
+    fig = px.pie(plt_data, values='Weight', names='Ticker', hole=0.4)
     fig.update_traces(textinfo='label+percent')
     fig.update_layout(showlegend=False)
     
