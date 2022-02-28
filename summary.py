@@ -81,6 +81,7 @@ def display():
     # store thematic weights
     theme_w = [st.session_state[theme+"_weights"] for theme in themes.keys()]
     
+    
     # sanity check total weights
     if sum(theme_w) > 1:
         st.markdown("<span style='color:red'> Warning! Total weight allocated exceed 1. Please re-allocate portfolio weights.</span>")
@@ -94,14 +95,32 @@ def display():
     benchmark_ret = st.session_state.index_position.iloc[:, :2].set_index('Date')
     combined_ret = pd.merge(blended_ret.to_frame(), benchmark_ret, on='Date').dropna()
     
-    # annualized return 
+    # portfolio analytics
+    blended_analytics = portfolio.calc_portfolio_analytics(combined_ret.iloc[:, 0], df_label="Blended")
+    benchmark_analytics= portfolio.calc_portfolio_analytics(combined_ret.iloc[:, 1], df_label="Benchmark")
+    st.header("Blended Portfolio Overview")
+    
+    combined_analytics = portfolio.compile_analytics(blended_analytics,benchmark_analytics)
     
     # index level
-    combined_il = combined_ret
+    combined_il = portfolio.compare_perf(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=startdate)
+    st.plotly_chart(portfolio.plot_perf_comparison(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=startdate), 
+                    use_container_width=True)
     
+    analytics_col, weights_col = st.columns(2)
+    with analytics_col:
+        for field, df in combined_analytics.items():
+            st.markdown(f"#### {field}")
+            st.dataframe(df)
+
     
-    st.write(st.session_state.index_position)
-    st.write(blended_ret)
+    with weights_col:
+        # plot weight chart
+        theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in themes.keys()}
+        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict))
+
+
+
 
 def generate_summary():
     low_risk = {}
