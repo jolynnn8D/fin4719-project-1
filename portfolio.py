@@ -13,8 +13,6 @@ import configuration
 with open('./chart_desc.json','rb') as f:
     chart_desc = json.load(f)
 
-startdate = "2015-01-01"
-enddate = "2021-12-31"
 base_date = "2019-01-01"
 benchmark = configuration.config["benchmark"]
 startdate = configuration.config["startdate"]
