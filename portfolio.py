@@ -52,6 +52,10 @@ def display():
         st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
         st.markdown(f"##### **Historical Mean Return: {round(st.session_state.expreturn*100, 2)}%**")
         st.markdown(f"##### **Historical Variance: {round(st.session_state.expvar*100, 2)}%**")
+    
+    metric_col1, metric_col2, extra_col = st.columns([1,1,2])
+    with metric_col1: st.metric('Historical Return (%)', round(st.session_state.expreturn*100, 2))
+    with metric_col2: st.metric('Historical Volatility (%)', round(np.sqrt(st.session_state.expvar)*100, 2))
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
