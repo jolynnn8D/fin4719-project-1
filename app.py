@@ -5,7 +5,7 @@ import earnings_strategy
 import summary
 
 # Page Config
-project_title = "FIN4719 Project 1"
+project_title = "Sleep Wellth"
 st.set_page_config(page_title=project_title, layout="wide")
 
 # Sidebar
