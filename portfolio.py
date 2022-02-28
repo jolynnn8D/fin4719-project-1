@@ -42,47 +42,63 @@ def display():
         "positions" not in st.session_state:
         compute_theme(st.session_state.theme, st.session_state.risk)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.header("Portfolio Composition and Returns")
-        st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
-        st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
-        # if st.session_state.risk == "Low":
-        #     st.sidebar.checkbox("Short Selling", key="short_sell")
-        st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
-        st.markdown(f"##### **Historical Mean Return: {round(st.session_state.expreturn*100, 2)}%**")
-        st.markdown(f"##### **Historical Variance: {round(st.session_state.expvar*100, 2)}%**")
+    st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
+    st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
+    st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
+    
+    header_col1, header_col2 = st.columns(2)
+    with header_col1: st.header("Portfolio Composition and Returns")
+    with header_col2: st.header("Analytics")
+    
     
     metric_col1, metric_col2, extra_col = st.columns([1,1,2])
     with metric_col1: st.metric('Historical Return (%)', round(st.session_state.expreturn*100, 2))
     with metric_col2: st.metric('Historical Volatility (%)', round(np.sqrt(st.session_state.expvar)*100, 2))
+        
+    row1_col1, row1_col2 = st.columns(2)
+    with row1_col1:
+        
+        st.markdown('##### Historical Performance')
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
-        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
+        
 
+    with row1_col2:
+        df_charts = st.session_state.positions.reset_index()
+        
+        st.markdown('##### \t Rolling Beta (6-month)')
+        st.plotly_chart(rolling_beta(df_charts.iloc[:,0], df_charts.iloc[:,1], df_charts.iloc[:,2]))
+        
+    
+    row2_col1, row2_col2 = st.columns(2) 
+    with row2_col1:
+        st.markdown('##### Composition')
+        st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
+    with row2_col2:
+        st.markdown('##### \t Rolling Sharpe Ratio (6-month)')
+        st.plotly_chart(rolling_sharpe(df_charts.iloc[:,0], df_charts.iloc[:,1]))
+        
+    row3_col1, row3_col2 = st.columns(2)
+    with row3_col1:
         for field, df in st.session_state.combined_analytics.items():
             st.markdown(f"##### {field}")
-            st.dataframe(df)
+            if field !="Sharpe Ratio":
+                df = df.multiply(100)
+                df = df.applymap("{0:.2f}%".format)
+            else:    
+                df = df.applymap("{0:.3f}".format)
+            st.dataframe(df.style)
         
-        """
-        for (ticker, weight) in st.session_state.weights.items():
-            st.markdown(f"**{ticker}**")
-            st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
-        """
-        
-        st.subheader("")  
-
-    with col2:
-        st.header("Analytics")
-        df = st.session_state.positions.reset_index()
-        st.plotly_chart(rolling_beta(df.iloc[:,0], df.iloc[:,1], df.iloc[:,2]))
-        st.plotly_chart(rolling_sharpe(df.iloc[:,0], df.iloc[:,1]))
-        
-        df["Date"] = df["Date"].dt.strftime('%Y-%m-%d')
-        st.plotly_chart(return_heatmap(df.iloc[:,0], df.iloc[:,1]))
-        st.plotly_chart(return_barchart(df.iloc[:,0], df.iloc[:,1]))
-        
-
+    with row3_col2:
+        df_charts["Date"] = df_charts["Date"].dt.strftime('%Y-%m-%d')
+        st.markdown('##### \t Monthly Returns Heatmap')
+        st.plotly_chart(return_heatmap(df_charts.iloc[:,0], df_charts.iloc[:,1]))
+    
+    row4_col1, row4_col2 = st.columns(2)    
+    with row4_col1: pass
+    with row4_col2:
+        st.markdown('##### \t Calendar Year Returns')
+        st.plotly_chart(return_barchart(df_charts.iloc[:,0], df_charts.iloc[:,1]))
         
         """
         # Historical Performance
