@@ -118,7 +118,7 @@ def display():
         # plot weight chart
         theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in themes.keys()}
         st.markdown(f"##### Composition")
-        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="")
+        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="", use_container_width=True)
 
 
 
