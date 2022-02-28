@@ -24,7 +24,7 @@ def display():
     if "index_position" not in st.session_state:
         st.session_state.index_position = portfolio.get_index_position(portfolio.benchmark)
     
-    st.header("Welcome to Sleep Wealth.")
+    st.header("Welcome to Sleep Wellth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
 
@@ -112,7 +112,12 @@ def display():
     with analytics_col:
         for field, df in combined_analytics.items():
             st.markdown(f"##### {field}")
-            st.dataframe(df, height = 1600)
+            if field !="Sharpe Ratio":
+                df = df.multiply(100)
+                df = df.applymap("{0:.2f}%".format)
+            else:    
+                df = df.applymap("{0:.3f}".format)
+            st.dataframe(df.style)
 
     
     with weights_col:
