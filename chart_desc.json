@@ -1,0 +1,7 @@
+{
+    "historical_perf": "The Growth of \\$10,000 chart reflects a hypothetical $10,000 investment and assumes reinvestment of dividends and capital gains.",
+    "rolling_beta" : "The beta measures of the portfolio's volatility of returns relative to the benchmark. A security with a higher beta has greater risk but, also greater expected returns. The rolling beta (6-months) metric uses a 6-month rolling window to measure the security's relative volatility over time.",
+    "rolling_sharpe" : "The sharpe ratio is a risk-adjusted performance measure. It defined as the average return earned in excess of the risk-free rate per unit of volatility or total risk. A high Sharpe ratio is good when compared to similar portfolios or funds with lower returns.",
+    "heatmap" : "The following returns heatmap summarizes the portfolio's monthly returns performance overtime. The heatmap can also help to visualize the presense of seasonlity trends.",
+    "calendar_year" : "The following barchart describes the portfolio's annual performance in the respective calendar year."
+}

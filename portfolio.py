@@ -7,6 +7,7 @@ import numpy as np
 import scipy.stats as stats 
 import plotly.graph_objects as go 
 import plotly.express as px 
+import json
 from datetime import datetime as dt
 
 # Parameters
@@ -15,6 +16,9 @@ themes = {
     "Tech": ["BOTZ", "ARKW", "KWEB"],
     "Value": ["AAPL", "MSFT", "AMZN", "NFLX"]
 }
+
+with open('./chart_desc.json','rb') as f:
+    chart_desc = json.load(f)
 
 startdate = "2015-01-01"
 enddate = "2021-12-31"
@@ -57,31 +61,36 @@ def display():
         
     row1_col1, row1_col2 = st.columns(2)
     with row1_col1:
+        st.markdown('##### Growth of $10,000 USD Since Inception')
+        st.markdown(f"*{chart_desc['historical_perf']}*")
+        st.subheader("")
+        # st.line_chart(st.session_state.positions)
+        st.plotly_chart(
+            plot_perf_comparison_price(
+                st.session_state.positions.iloc[:, 0], st.session_state.positions.iloc[:, 1], base_date=startdate, rebase=10000)
+        )
         
-        st.markdown('##### Historical Performance')
-        st.line_chart(st.session_state.positions)
-        st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
-        
-
     with row1_col2:
         df_charts = st.session_state.positions.reset_index()
-        
         st.markdown('##### \t Rolling Beta (6-month)')
+        st.markdown(f"*{chart_desc['rolling_beta']}*")
         st.plotly_chart(rolling_beta(df_charts.iloc[:,0], df_charts.iloc[:,1], df_charts.iloc[:,2]))
-        
     
     row2_col1, row2_col2 = st.columns(2) 
     with row2_col1:
         st.markdown('##### Composition')
+        st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
     with row2_col2:
         st.markdown('##### \t Rolling Sharpe Ratio (6-month)')
+        st.markdown(f"*{chart_desc['rolling_sharpe']}*")
         st.plotly_chart(rolling_sharpe(df_charts.iloc[:,0], df_charts.iloc[:,1]))
         
     row3_col1, row3_col2 = st.columns(2)
     with row3_col1:
+        st.markdown('##### Risk-Return Performance')
         for field, df in st.session_state.combined_analytics.items():
-            st.markdown(f"##### {field}")
+            st.markdown(f"**{field}**")
             if field !="Sharpe Ratio":
                 df = df.multiply(100)
                 df = df.applymap("{0:.2f}%".format)
@@ -92,12 +101,14 @@ def display():
     with row3_col2:
         df_charts["Date"] = df_charts["Date"].dt.strftime('%Y-%m-%d')
         st.markdown('##### \t Monthly Returns Heatmap')
+        st.markdown(f"*{chart_desc['heatmap']}*")
         st.plotly_chart(return_heatmap(df_charts.iloc[:,0], df_charts.iloc[:,1]))
     
     row4_col1, row4_col2 = st.columns(2)    
     with row4_col1: pass
     with row4_col2:
         st.markdown('##### \t Calendar Year Returns')
+        st.markdown(f"*{chart_desc['calendar_year']}*")
         st.plotly_chart(return_barchart(df_charts.iloc[:,0], df_charts.iloc[:,1]))
         
         """
@@ -559,7 +570,49 @@ def compare_perf(portfolio, benchmark, base_date, end_date=None, rebase=1000):
     
     return compare_il
 
+def compare_perf_price(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    portfolio_il = calc_il_price(portfolio, base_date, end_date, rebase)
+    benchmark_il = calc_il_price(benchmark, base_date, end_date, rebase)
+    
+    compare_il = pd.merge(portfolio_il.to_frame(),
+                          benchmark_il, 
+                          how='left',
+                          on='Date')
+    
+    return compare_il
+
 def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=1000):
+    """Generate plotly fig object that compares performance between benchmark and portfolio
+
+    Args:
+        portfolio (pd.Series): Timeseries of portfolio returns (returns)
+        benchmark (pd.Series): Timeseries of benchmark returns (returns)
+        base_date (str): Starting date of reference period
+        end_date (str, optional): Ending date of reference period. If None, default to last available date in sample data. Defaults to None.
+        rebase (int, optional): Reference level. Defaults to 1000.
+
+    Returns:
+        plotly.graph_objects.Figure: Plotly figure object 
+    """
+    
+    compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
+    
+    # plot covid data
+    fig = px.line(compare_il)
+    fig.add_hline(y=rebase, line_dash="dash", line_color="black", line_width=1) # rebase
+    fig.update_layout(yaxis_title='Index Level',
+                        legend=dict(
+                            yanchor="top",
+                            y=0.99,
+                            xanchor="left",
+                            x=0.01,
+                            title=''
+                            )
+    )
+    
+    return fig
+
+def plot_perf_comparison_price(portfolio, benchmark, base_date, end_date=None, rebase=1000):
     """Generate plotly fig object that compares performance between benchmark and portfolio
 
     Args:
@@ -573,7 +626,7 @@ def plot_perf_comparison(portfolio, benchmark, base_date, end_date=None, rebase=
         plotly.graph_objects.Figure: Plotly figure object 
     """
     
-    compare_il = compare_perf(portfolio, benchmark, base_date, end_date, rebase)
+    compare_il = compare_perf_price(portfolio, benchmark, base_date, end_date, rebase)
     
     # plot covid data
     fig = px.line(compare_il)
