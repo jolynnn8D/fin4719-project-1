@@ -27,7 +27,6 @@ def display():
     st.header("Welcome to Sleep Wealth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
-    st.header("Welcome to Sleep Wealth.")
 
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
