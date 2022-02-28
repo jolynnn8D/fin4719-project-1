@@ -68,7 +68,7 @@ def display():
     col4, col5, col6 = st.columns(3)
     col4.markdown(f"#### Historical Performance")
     increase = str(round(   st.session_state.annualret - (np.random.randint(st.session_state.annualret/2, st.session_state.annualret) + np.random.random(1))[0],2)) + "%"
-    col6.metric(label="Historical Mean Returns (Annualized) vs Passive Portfolio", value = f"{round(st.session_state.annualret, 2)}%", delta = increase)
+    col6.metric(label="Historical Mean Return (Annualized) vs Passive Portfolio", value = f"{round(st.session_state.annualret, 2)}%", delta = increase)
     # col6.markdown()
 
     if st.session_state.fig != 'No suggested strategy for ' + st.session_state.ticker:
