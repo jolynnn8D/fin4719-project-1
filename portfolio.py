@@ -6,14 +6,20 @@ import numpy as np
 import plotly.express as px 
 from datetime import datetime as dt
 
-import config 
 import analytics 
+import configuration
 
 base_date = "2019-01-01"
-value_key = f"{config.BENCHMARK} Value"
+benchmark = configuration.config["benchmark"]
+startdate = configuration.config["startdate"]
+enddate = configuration.config["enddate"]
+themes = configuration.config["funds"]
+value_key = f"{benchmark} Value"
 
 def display():
-
+    """
+    This is the main UI function. All streamlit frontend functions go here. 
+    """
     # Initialize values
     if "theme" not in st.session_state:
         st.session_state.theme = "ESG and Green Energy"
@@ -22,7 +28,7 @@ def display():
     # if "short_sell" not in st.session_state:
     #     st.session_state.short_sell = True
     if "index_position" not in st.session_state:
-        st.session_state.index_position = get_index_position(config.BENCHMARK)
+        st.session_state.index_position = get_index_position(benchmark)
     if "weights" not in st.session_state or \
         "expreturn" not in st.session_state or \
         "expvar" not in st.session_state or \
@@ -30,7 +36,7 @@ def display():
         "positions" not in st.session_state:
         compute_theme(st.session_state.theme, st.session_state.risk)
     
-    st.sidebar.selectbox("Pick a fund theme", config.THEMES.keys(), key="theme")  
+    st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
     st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
     st.sidebar.button("Refresh", on_click=compute_theme, args=(st.session_state.theme, st.session_state.risk))
     
@@ -89,7 +95,7 @@ def display():
         st.plotly_chart(analytics.return_barchart(df_charts.iloc[:,0], df_charts.iloc[:,1]))
     
 
-# Main computation functions
+### Main computation functions ##
 def compute_theme(theme, risk):
     """
     Compute the MVP and max sharpe ratio portfolio for a chosen theme, and saves the result to session state.
@@ -98,8 +104,8 @@ def compute_theme(theme, risk):
         theme (string): Name of the theme fund chosen.
         risk (string): Risk profile of investor, either High or Low.
     """
-    ticker_list = config.THEMES[theme]
-    returns = get_returns(ticker_list, config.STARTDATE, config.ENDDATE)
+    ticker_list = themes[theme]["tickers"]
+    returns = get_returns(ticker_list, startdate, enddate)
     returns_without_date = returns.drop(columns=["Date"])
     if risk == "Low":
         results = calculate_mvp(returns_without_date)
@@ -123,7 +129,7 @@ def compute_theme(theme, risk):
     benchmark_ret = st.session_state.index_position.iloc[:, :2].set_index('Date')    
     portfolio_ret = returns.set_index('Date').loc[:, 'NormReturns']
     portfolio_analytics = calc_portfolio_analytics(portfolio_ret, df_label=st.session_state.theme)
-    benchmark_analytics= calc_portfolio_analytics(benchmark_ret, df_label=config.BENCHMARK)
+    benchmark_analytics= calc_portfolio_analytics(benchmark_ret, df_label=benchmark)
     
     st.session_state.combined_analytics = compile_analytics(portfolio_analytics, benchmark_analytics)
 
@@ -335,7 +341,7 @@ def get_positions(returns, weights):
     return positions[["Portfolio Value", value_key]]
 
 def get_index_position(benchmark):
-    returns = get_returns([benchmark], config.STARTDATE, config.ENDDATE)
+    returns = get_returns([benchmark], startdate, enddate)
     returns[benchmark] += 1
     returns[value_key] = 0
     returns.loc[0, value_key] = 100 * returns.loc[0, benchmark]

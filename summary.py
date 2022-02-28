@@ -3,17 +3,19 @@ import numpy as np
 import pandas as pd
 import json
 import portfolio 
-import config 
+import configuration
 
-with open('investment_obj.json', 'rb') as f:
-     investment_obj = json.load(f)
+benchmark = configuration.config["benchmark"]
+startdate = configuration.config["startdate"]
+enddate = configuration.config["enddate"]
+themes = configuration.config["funds"]
 
 risk_options = ['Low','High']
 
 def display():
     
     if "index_position" not in st.session_state:
-        st.session_state.index_position = portfolio.get_index_position(config.BENCHMARK)
+        st.session_state.index_position = portfolio.get_index_position(benchmark)
     
     st.header("Welcome to Sleep Wellth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
@@ -21,9 +23,8 @@ def display():
 
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
-        for theme, tickers in config.THEMES.items():
-            returns = portfolio.get_returns(tickers, config.STARTDATE, config.ENDDATE)
-            # returns_without_date = returns.drop(columns=["Date"])
+        for theme, details in themes.items():
+            returns = portfolio.get_returns(details["tickers"], startdate, enddate)
             st.session_state.returns_data[theme] = returns.set_index('Date')
 
     low_risk, high_risk = generate_summary()
@@ -37,10 +38,10 @@ def display():
         elif risk_level == 'High':
             risk_result = high_risk
             
-        for theme, tickers in config.THEMES.items():
+        for theme, details in themes.items():
             constituent_ret = st.session_state.returns_data[theme]
             w = risk_result[theme][0] # extract weights from results dictionary
-            theme_portfolio_ret = (constituent_ret[tickers] * w).sum(axis=1) # calculate portfolio returns
+            theme_portfolio_ret = (constituent_ret[details["tickers"]] * w).sum(axis=1) # calculate portfolio returns
             portfolio_ret_dict[theme] = theme_portfolio_ret
         
         portfolio_risk_ret_dict[risk_level] = portfolio_ret_dict # store portfolio returns at each risk level
@@ -55,11 +56,12 @@ def display():
         risk_result = high_risk
     
     
-    for theme in config.THEMES.keys():
+    for theme in themes.keys():
         with portfolios[column]:
             st.subheader(theme)
             # st.markdown("##### **Low Risk**")
-            st.markdown(f"*{investment_obj[theme]}*")
+            description = themes[theme]["description"]
+            st.markdown(f"*{description}*")
             st.markdown(f"**Historical Mean Return: {round(risk_result[theme][1]*100, 2)}%**")
             st.markdown(f"**Historical Variance: {round(risk_result[theme][2]*100, 2)}%**")
             st.number_input("Your stake: ", min_value=0.0, max_value=1.0, value=1/3, key=theme +"_weights")
@@ -71,7 +73,7 @@ def display():
         column += 1
     
     # store thematic weights
-    theme_w = [st.session_state[theme+"_weights"] for theme in config.THEMES.keys()]
+    theme_w = [st.session_state[theme+"_weights"] for theme in themes.keys()]
     
     
     # sanity check total weights
@@ -95,8 +97,8 @@ def display():
     combined_analytics = portfolio.compile_analytics(blended_analytics,benchmark_analytics)
     
     # index level
-    combined_il = portfolio.compare_perf(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=config.STARTDATE)
-    st.plotly_chart(portfolio.plot_perf_comparison(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=config.STARTDATE), 
+    combined_il = portfolio.compare_perf(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=startdate)
+    st.plotly_chart(portfolio.plot_perf_comparison(combined_ret.iloc[:, 0], combined_ret.iloc[:, 1], base_date=startdate), 
                     use_container_width=True)
     
     analytics_col, weights_col = st.columns(2)
@@ -113,7 +115,7 @@ def display():
     
     with weights_col:
         # plot weight chart
-        theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in config.THEMES.keys()}
+        theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in themes.keys()}
         st.markdown(f"##### Composition")
         st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="", use_container_width=True)
 
