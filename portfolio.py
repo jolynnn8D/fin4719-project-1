@@ -178,28 +178,116 @@ def monte_carlo(returns, type="sharpe", n=1000):
     return (best_weights, expected_return, expected_variance)
 
 
-def annualize_ret(ret, n_years=None):
+def annualize_ret(ret, n_days=None):
     """Calculate annualized returns for a given return series with daily interval.
 
     Args:
         ret (pd.Series): Simple return series (1 + r) ...
-        n_years (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
 
     Returns:
         float: Annualized returns over n years
     """
     ret = ret.values
-    n_trading_days = 252*n_years
-    
-    if n_years is None:
-        ann_ret = ret.prod() ** (252 / n_trading_days) - 1
-        
+    n_trading_days = int(252*n_days)
+    if n_days is None:
+        obs = ret
     else:
-        ann_ret = ret[-n_trading_days:].prod() ** (252 / n_trading_days) - 1
+        obs = ret[-n_trading_days:]
+    
+    cumret = ret[-n_trading_days:].prod()
+    ann_ret =  cumret ** (252 / n_trading_days) - 1
     
     return ann_ret
+
+
+def annualize_std(ret, n_days=None):
+    """Annualize standard deviation for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        float: Annualized standard deviation over n years
+    """
+    ret = ret.values
+    n_trading_days = int(252*n_days)
+    
+    if n_days is None:
+        obs = ret
+        
+    else:
+        obs = ret[-n_trading_days:]
+        
+    std = obs.std()
+    ann_std = std * np.sqrt(252 / n_trading_days) 
+    
+    return ann_std
+
+def annualize_sharpe_ratio(ann_ret, ann_std, rf=0):
+    return (ann_ret-rf) / ann_std
+    
  
- 
+def calc_portfolio_analytics(ret, df_label='Benchmark'):
+    """Calculate annualized portfolio analytics for a given return series with daily interval.
+
+    Args:
+        ret (pd.Series): Simple return series (1 + r) ...
+        n_days (int, optional): Define window to annualize returns over. If None, annaulize returns since inception. Defaults to None.
+
+    Returns:
+        pd.DataFrame: Annualized portfolio analytics
+    """
+    
+    ann_ret_dict = {
+        "3 Month" : annualize_ret(ret, n_days=252/4),
+        "6 Month" : annualize_ret(ret, n_days=252/2),
+        "1 Year" : annualize_ret(ret, n_days=252),
+        "3 Year" : annualize_ret(ret, n_days=252*3),
+        "5 Year" : annualize_ret(ret, n_days=252*5)
+    }
+    
+    ann_std_dict = {
+        "3 Month" : annualize_std(ret, n_days=252/4),
+        "6 Month" : annualize_std(ret, n_days=252/2),
+        "1 Year" : annualize_std(ret, n_days=252),
+        "3 Year" : annualize_std(ret, n_days=252*3),
+        "5 Year" : annualize_std(ret, n_days=252*5)
+    }
+    
+    ann_sr_dict = {
+        "3 Month" : annualize_sharpe_ratio(ann_ret_dict["3 Month"], ann_std_dict["3 Month"]),
+        "6 Month" : annualize_sharpe_ratio(ann_ret_dict["6 Month"], ann_std_dict["6 Month"]),
+        "1 Year" : annualize_sharpe_ratio(ann_ret_dict["1 Year"], ann_std_dict["1 Year"]),
+        "3 Year" : annualize_sharpe_ratio(ann_ret_dict["3 Year"], ann_std_dict["3 Year"]),
+        "5 Year" : annualize_sharpe_ratio(ann_ret_dict["5 Year"], ann_std_dict["5 Year"])
+    }
+    
+    fields = ['Returns','Volatility','Sharpe Ratio']
+    analytics = pd.DataFrame([ann_ret_dict, ann_std_dict, ann_sr_dict],
+                              index = fields)
+
+    analytics.name = df_label
+    
+    return analytics
+    
+
+def compile_analytics(pf_analytics1, pf_analytics2):
+    """Compile analytics using dataframe generated from `calc_portfolio_analytics()`"""
+    
+    label1 = pf_analytics1.name
+    label2 = pf_analytics2.name
+    
+    analytics_dict = {}
+    for field in ['Returns','Volatility','Sharpe Ratio']:
+        tbl = pd.concat([pf_analytics1.loc[[field]],pf_analytics2.loc[[field]]])
+        tbl.index = [label1,label2]
+        tbl.columns.name = field
+        analytics_dict[field] = tbl
+    
+    return analytics_dict
+
 ### Utils and Organizing Data ###
 def get_returns(tickers, startdate, enddate):
     data = yf.download(tickers, start=startdate, end=enddate)
