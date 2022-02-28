@@ -348,7 +348,7 @@ def rolling_beta(dates, asset_pr, benchmark_pr, window = 180):
     plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling Beta': rolling_beta})
     
     # plot
-    fig = px.line(plt_data, x = 'Date', y = 'Rolling Beta', title = str('Rolling Beta' + ' (' + str(window) + '-' + 'days' + ')'))
+    fig = px.line(plt_data, x = 'Date', y = 'Rolling Beta')
     
     return fig 
 
@@ -373,7 +373,7 @@ def rolling_sharpe(dates, asset_pr, window = 180):
     plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling sharpe': rolling_sharpe})
     
     # plot
-    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe', title = str('Rolling Sharpe' + ' (' + str(window) + '-' + 'days' + ')'))
+    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe')
     
     return fig 
 
@@ -402,7 +402,7 @@ def return_heatmap(dates, asset_pr):
     df.columns = ['Year', 'Month', 'Return']
     df = df.pivot_table(index='Year', columns='Month', values='Return')
     
-    fig = px.imshow(df, labels=dict(x="Month", y="Year", color="Return"), title="Monthly Return Heatmap",
+    fig = px.imshow(df, labels=dict(x="Month", y="Year", color="Return"),
                     color_continuous_scale =["red","white","green"] , color_continuous_midpoint = 0,
                     text_auto=True)
     
@@ -447,7 +447,6 @@ def return_barchart(dates, asset_pr):
         color='is_negative',
         color_discrete_map=color_mapping,
         orientation='h', 
-        title="Calendar Year Returns", 
         text_auto=True)
     fig.update_layout(showlegend=False)
     fig.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
