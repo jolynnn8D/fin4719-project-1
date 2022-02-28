@@ -13,8 +13,8 @@ enddate = "2021-12-31"
 
 
 def display():
-    st.header("PaGrowth")
-    
+    st.header("Welcome to Sleep Wealth.")
+
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
         for theme, tickers in themes.items():
