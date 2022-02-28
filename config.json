@@ -1,0 +1,19 @@
+{
+    "benchmark": "^GSPC",
+    "startdate": "2015-01-01",
+    "enddate": "2021-12-31",
+    "funds": {
+        "ESG and Green Energy": {
+            "description": "The ESG Fund invests in companies that rank highly on all environmental, social, and corporate governance (ESG) criteria.",
+            "tickers": ["ICLN", "PBW", "TAN"]
+        },
+        "Tech": {
+            "description": "The Tech Fund invests in companies at the leading edge of technologies and trends that are reshaping the future.",
+            "tickers": ["BOTZ", "ARKW", "KWEB"]
+        },
+        "Value": {
+            "description": "The Value Fund invests in companies with long-term growth potential at great value.",
+            "tickers": ["AAPL", "MSFT", "AMZN", "NFLX"]
+        }
+    }
+}

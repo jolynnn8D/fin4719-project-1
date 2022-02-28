@@ -1,21 +1,14 @@
 import warnings
 import streamlit as st
-import yahoo_fin.stock_info as si
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import scipy.stats as stats 
-import plotly.graph_objects as go 
 import plotly.express as px 
 import json
 from datetime import datetime as dt
 
-# Parameters
-themes = {
-    "ESG and Green Energy": ["ICLN", "PBW", "TAN"],
-    "Tech": ["BOTZ", "ARKW", "KWEB"],
-    "Value": ["AAPL", "MSFT", "AMZN", "NFLX"]
-}
+import analytics 
+import configuration
 
 with open('./chart_desc.json','rb') as f:
     chart_desc = json.load(f)
@@ -23,13 +16,16 @@ with open('./chart_desc.json','rb') as f:
 startdate = "2015-01-01"
 enddate = "2021-12-31"
 base_date = "2019-01-01"
-covid_startdate = "2020-02-28"
-covid_enddate = "2021-09-30"
-benchmark = "^GSPC"
+benchmark = configuration.config["benchmark"]
+startdate = configuration.config["startdate"]
+enddate = configuration.config["enddate"]
+themes = configuration.config["funds"]
 value_key = f"{benchmark} Value"
 
 def display():
-
+    """
+    This is the main UI function. All streamlit frontend functions go here. 
+    """
     # Initialize values
     if "theme" not in st.session_state:
         st.session_state.theme = "ESG and Green Energy"
@@ -74,7 +70,8 @@ def display():
         df_charts = st.session_state.positions.reset_index()
         st.markdown('##### \t Rolling Beta (6-month)')
         st.markdown(f"*{chart_desc['rolling_beta']}*")
-        st.plotly_chart(rolling_beta(df_charts.iloc[:,0], df_charts.iloc[:,1], df_charts.iloc[:,2]))
+        st.plotly_chart(analytics.rolling_beta(df_charts.iloc[:,0], df_charts.iloc[:,1], df_charts.iloc[:,2]))
+        
     
     row2_col1, row2_col2 = st.columns(2) 
     with row2_col1:
@@ -84,7 +81,7 @@ def display():
     with row2_col2:
         st.markdown('##### \t Rolling Sharpe Ratio (6-month)')
         st.markdown(f"*{chart_desc['rolling_sharpe']}*")
-        st.plotly_chart(rolling_sharpe(df_charts.iloc[:,0], df_charts.iloc[:,1]))
+        st.plotly_chart(analytics.rolling_sharpe(df_charts.iloc[:,0], df_charts.iloc[:,1]))
         
     row3_col1, row3_col2 = st.columns(2)
     with row3_col1:
@@ -102,31 +99,26 @@ def display():
         df_charts["Date"] = df_charts["Date"].dt.strftime('%Y-%m-%d')
         st.markdown('##### \t Monthly Returns Heatmap')
         st.markdown(f"*{chart_desc['heatmap']}*")
-        st.plotly_chart(return_heatmap(df_charts.iloc[:,0], df_charts.iloc[:,1]))
+        st.plotly_chart(analytics.return_heatmap(df_charts.iloc[:,0], df_charts.iloc[:,1]))
     
     row4_col1, row4_col2 = st.columns(2)    
     with row4_col1: pass
     with row4_col2:
         st.markdown('##### \t Calendar Year Returns')
         st.markdown(f"*{chart_desc['calendar_year']}*")
-        st.plotly_chart(return_barchart(df_charts.iloc[:,0], df_charts.iloc[:,1]))
-        
-        """
-        # Historical Performance
-        st.header("Historical Performance")
-        st.plotly_chart(
-            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1], 
-                                 base_date=base_date)
-            )
-        st.plotly_chart(
-            plot_perf_comparison(st.session_state.positions.iloc[:,0], st.session_state.positions.iloc[:,1],
-                                 base_date=covid_startdate, end_date=covid_enddate)
-            )
-        """
+        st.plotly_chart(analytics.return_barchart(df_charts.iloc[:,0], df_charts.iloc[:,1]))
+
 
 # Main computation functions
 def compute_theme(theme, risk):
-    ticker_list = themes[theme]
+    """
+    Compute the MVP and max sharpe ratio portfolio for a chosen theme, and saves the result to session state.
+
+    Args:
+        theme (string): Name of the theme fund chosen.
+        risk (string): Risk profile of investor, either High or Low.
+    """
+    ticker_list = themes[theme]["tickers"]
     returns = get_returns(ticker_list, startdate, enddate)
     returns_without_date = returns.drop(columns=["Date"])
     if risk == "Low":
@@ -138,7 +130,6 @@ def compute_theme(theme, risk):
     weights = results[0]
     expected_return = results[1]
     expected_variance = results[2]
-    sharpe = expected_return / np.sqrt(expected_variance)
     
     weight_dict = {}
     for (index, ticker) in enumerate(ticker_list):
@@ -159,6 +150,16 @@ def compute_theme(theme, risk):
         
     
 def calculate_mvp(returns, short_sell=False):
+    """
+    Calculate MVP given the returns of several stocks.
+
+    Args:
+        returns (pd.DataFrame): DataFrame containing daily returns of different stock tickers.
+        short_sell (boolean, optional): Set to True to allow short selling in the MVP. Defaults to False.
+
+    Returns:
+        tuple (list, float, float): Tuple of weights, annualized returns and annualized variance.
+    """
     varcov = returns.cov()
     num_stocks = len(returns.columns) # -1 if date column is present, else remove
     ones_arr = np.array([[1]] * num_stocks)
@@ -175,6 +176,17 @@ def calculate_mvp(returns, short_sell=False):
         return (flattened_weights, expected_returns*252, expected_variance*252)
 
 def monte_carlo(returns, type="sharpe", n=1000):
+    """
+    Performs the Monte Carlo simulation.
+
+    Args:
+        returns (pd.DataFrame): DataFrame containing daily returns of different stock tickers.
+        type (string, optional): Either sharpe or mvp for the type of simulation.
+        n (int, optional): Number of iterations.
+
+    Returns:
+        tuple (list, float, float): Tuple of weights, annualized returns and annualized variance.
+    """
     varcov = returns.cov()
     num_stocks = len(returns.columns)
     best_weights = []
@@ -350,139 +362,6 @@ def get_index_position(benchmark):
     for i in range(1, len(returns)):
         returns.loc[i, value_key] = returns.loc[i-1, value_key] * returns.loc[i, benchmark]
     return returns
-
-### Analytics ###
-
-def rolling_beta(dates, asset_pr, benchmark_pr, window = 180):
-    # find returns 
-    benchmark_rt = benchmark_pr.pct_change().dropna()
-    asset_rt = asset_pr.pct_change().dropna()
-    
-    # Initialise results list
-    rolling_beta = []
-
-    #get df size -1 for dropna 
-    length = len(dates)
-    
-    # beta of a window
-    def beta(benchmark_rt, asset_rt):
-
-        # x is the benchmark, y is the asset linregress(x,y) -- CAPM: R_i = a + beta(R_m - R_f) + e
-        ols = stats.linregress(benchmark_rt, asset_rt)
-        beta = ols.slope
-        return beta
-
-    # for loop for 1-day step
-    for i in range(length-window):
-        rolling_beta.append(beta(benchmark_rt[i:i+window], asset_rt[i:i+window]))
-        
-    plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling Beta': rolling_beta})
-    
-    # plot
-    fig = px.line(plt_data, x = 'Date', y = 'Rolling Beta')
-    
-    return fig 
-
-def rolling_sharpe(dates, asset_pr, window = 180):
-    asset_rt = asset_pr.pct_change().dropna()
-    
-    # Initialise results list
-    rolling_sharpe = []
-
-    #get df size -1 for dropna 
-    length = len(dates)
-    
-    # beta of a window
-    def sharpe(asset_rt):
-        sharpe = np.mean(asset_rt)/np.std(asset_rt)
-        return sharpe
-
-    # for loop for 1-day step
-    for i in range(length-window):
-        rolling_sharpe.append(sharpe(asset_rt[i:i+window]))
-        
-    plt_data = pd.DataFrame({'Date': dates[window:], 'Rolling sharpe': rolling_sharpe})
-    
-    # plot
-    fig = px.line(plt_data, x = 'Date', y = 'Rolling sharpe')
-    
-    return fig 
-
-def return_heatmap(dates, asset_pr):
-
-    # convert dtype to dates and resample to month end price
-    data = pd.DataFrame([dates, asset_pr]).T
-    data.columns = ['Date', 'asset_pr']
-    data.Date = pd.to_datetime(dates)
-    data.set_index('Date', inplace = True)    
-    data = data.resample('M').last()
-    data = data.reset_index()
-    
-    # find asset monthly retrun
-    data['asset_rt'] = data.asset_pr.pct_change()*100
-    data['asset_rt'] = data['asset_rt'].round(2)
-    data.dropna()
-    
-    # get year and month 
-    asset_rt = data.asset_rt
-    year = data.Date.dt.year.astype(int)
-    month = data.Date.dt.month.astype(int)
-    
-    #reshape dataframe
-    df = pd.DataFrame([year, month, asset_rt]).T
-    df.columns = ['Year', 'Month', 'Return']
-    df = df.pivot_table(index='Year', columns='Month', values='Return')
-    
-    fig = px.imshow(df, labels=dict(x="Month", y="Year", color="Return"),
-                    color_continuous_scale =["red","white","green"] , color_continuous_midpoint = 0,
-                    text_auto=True)
-    
-    return fig
-
-def return_barchart(dates, asset_pr):
-
-    # convert dtype to dates and resample to month end price
-    data = pd.DataFrame([dates, asset_pr]).T
-    data.columns = ['Date', 'asset_pr']
-    data.Date = pd.to_datetime(dates)
-    data.set_index('Date', inplace = True)    
-    data = data.resample('Y').last()
-    data = data.reset_index()
-    
-    # find asset monthly retrun
-    data['asset_rt'] = data.asset_pr.pct_change()*100
-    data['asset_rt'] = data['asset_rt'].round(2)
-    data.dropna(inplace=True)
-       
-    # get year and month 
-    asset_rt = data.asset_rt
-    # year = data.Date.dt.strftime("%Y")
-    year = data.Date.dt.year.astype(int)
-    
-    #reshape dataframe
-    df = pd.DataFrame([year[1:], asset_rt]).T
-    df.columns = ['Year', 'Return']
-
-    # create negative ret flag
-    df['is_negative']  = np.where(df['Return'] < 0, True , False)
-    
-    color_mapping = {
-        True : "red",
-        False : "green"
-    }
-    
-    fig = px.bar(
-        df, 
-        x='Return', 
-        y='Year', 
-        color='is_negative',
-        color_discrete_map=color_mapping,
-        orientation='h', 
-        text_auto=True)
-    fig.update_layout(showlegend=False)
-    fig.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
-    
-    return fig
 
 
 # input price series with date set as index
