@@ -24,9 +24,10 @@ def display():
     if "index_position" not in st.session_state:
         st.session_state.index_position = portfolio.get_index_position(portfolio.benchmark)
     
-    st.header("PaGrowth")
+    st.header("Welcome to Sleep Wealth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
+
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
         for theme, tickers in themes.items():

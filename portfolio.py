@@ -47,7 +47,7 @@ def display():
     with col1:
         st.header("Portfolio Composition and Returns")
         
-        st.sidebar.selectbox("Pick a portfolio theme", themes.keys(), key="theme")  
+        st.sidebar.selectbox("Pick a fund theme", themes.keys(), key="theme")  
         st.sidebar.select_slider("What is your risk appetite?", options=["Low", "High"], key="risk")
         # if st.session_state.risk == "Low":
         #     st.sidebar.checkbox("Short Selling", key="short_sell")
@@ -55,7 +55,7 @@ def display():
 
         
         st.markdown(f"##### **Historical Mean Return: {round(st.session_state.expreturn*100, 2)}%**")
-        st.markdown(f"##### **Volatility: {round(st.session_state.expvar*100, 2)}%**")
+        st.markdown(f"##### **Historical Variance: {round(st.session_state.expvar*100, 2)}%**")
         st.line_chart(st.session_state.positions)
         st.markdown(f"The portfolio allocation below is the **{st.session_state.portfolio_type}** based on the portfolio theme and risk that you chose.")
         st.plotly_chart(plot_weight_pie_charts(st.session_state.weights), use_container_width=True)
@@ -64,9 +64,6 @@ def display():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
 
-        st.subheader("")
-        
-    
     with col2:
         st.header("Analytics")
         df = st.session_state.positions.reset_index()
