@@ -110,14 +110,15 @@ def display():
     analytics_col, weights_col = st.columns(2)
     with analytics_col:
         for field, df in combined_analytics.items():
-            st.markdown(f"#### {field}")
+            st.markdown(f"##### {field}")
             st.dataframe(df)
 
     
     with weights_col:
         # plot weight chart
         theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in themes.keys()}
-        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict))
+        st.markdown(f"##### Composition")
+        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="")
 
 
 

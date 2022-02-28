@@ -115,19 +115,19 @@ def compute_theme(theme, risk):
     st.session_state.positions = get_positions(returns, st.session_state.weights)
     
     # calculate 1,3,5 year annualized returns
-    ann_ret_list = []
-    for i in [1,3,5]:
-        ann_ret = annualize_ret(returns['NormReturns'], n_years=i)
-        ann_ret_list.append(ann_ret)
-    since_incep_ret = annualize_ret(returns['NormReturns'], n_years=i)
+    # ann_ret_list = []
+    # for i in [1,3,5]:
+    #     ann_ret = annualize_ret(returns['NormReturns'], n_days=i)
+    #     ann_ret_list.append(ann_ret)
+    # since_incep_ret = annualize_ret(returns['NormReturns'], n_days=i)
     
-    ann_ret_dict = {
-        "ann_ret_1yr" : ann_ret_list[0],
-        "ann_ret_3yr" : ann_ret_list[1],
-        "ann_ret_5yr" : ann_ret_list[2],
-        "since_incep_ret" : since_incep_ret
-    }
-    st.session_state.ann_ret_dict = ann_ret_dict
+    # ann_ret_dict = {
+    #     "ann_ret_1yr" : ann_ret_list[0],
+    #     "ann_ret_3yr" : ann_ret_list[1],
+    #     "ann_ret_5yr" : ann_ret_list[2],
+    #     "since_incep_ret" : since_incep_ret
+    # }
+    # st.session_state.ann_ret_dict = ann_ret_dict
 
 def calculate_mvp(returns, short_sell=False):
     varcov = returns.cov()
@@ -580,7 +580,7 @@ def plot_weight_pie_charts(weight_dict):
         [(ticker, weight) for ticker,weight in weight_dict.items()],
         columns=['Ticker','Weight']
     )
-    fig = px.pie(plt_data, values='Weight', names='Ticker', title='Constituents', hole=0.4)
+    fig = px.pie(plt_data, values='Weight', names='Ticker', hole=0.4)
     fig.update_traces(textinfo='label+percent')
     fig.update_layout(showlegend=False)
     
