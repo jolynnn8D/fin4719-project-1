@@ -28,7 +28,6 @@ def display():
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
 
-
     if "returns_data" not in st.session_state:
         st.session_state.returns_data = {}
         for theme, tickers in themes.items():
