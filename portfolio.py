@@ -60,10 +60,12 @@ def display():
             st.markdown(f"##### {field}")
             st.dataframe(df)
         
+        """
         for (ticker, weight) in st.session_state.weights.items():
             st.markdown(f"**{ticker}**")
             st.text_input("Weight", value=round(weight,2), key=f"{ticker}_weight", disabled=True)
-
+        """
+        
         st.subheader("")  
 
     with col2:
