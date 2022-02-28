@@ -445,7 +445,7 @@ def return_barchart(dates, asset_pr):
         color='is_negative',
         color_discrete_map=color_mapping,
         orientation='h', 
-        title="Monthly Return Barchart", 
+        title="Calendar Year Returns", 
         text_auto=True)
     fig.update_layout(showlegend=False)
     fig.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
