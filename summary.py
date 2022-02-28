@@ -24,7 +24,7 @@ def display():
     if "index_position" not in st.session_state:
         st.session_state.index_position = portfolio.get_index_position(portfolio.benchmark)
     
-    st.header("PaGrowth")
+    st.header("Welcome to Sleep Wealth.")
     st.selectbox("Select risk level:", options=risk_options, key="risk")
     st.markdown("---")
     st.header("Welcome to Sleep Wealth.")
@@ -120,7 +120,7 @@ def display():
         # plot weight chart
         theme_w_dict = {theme: st.session_state[theme+"_weights"] for theme in themes.keys()}
         st.markdown(f"##### Composition")
-        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="")
+        st.plotly_chart(portfolio.plot_weight_pie_charts(theme_w_dict), title="", use_container_width=True)
 
 
 
