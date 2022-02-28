@@ -221,7 +221,7 @@ def get_positions(returns, weights):
         returns.loc[i, 'Portfolio Value'] = returns.loc[i-1, 'Portfolio Value'] * returns.loc[i, 'NormReturns']
 
  
-    positions = pd.concat([returns, st.session_state.index_position], axis=1)
+    positions = pd.concat([returns, st.session_state.index_position[value_key]], axis=1)
     positions = positions.set_index("Date")
     return positions[["Portfolio Value", value_key]]
 
@@ -232,7 +232,7 @@ def get_index_position(benchmark):
     returns.loc[0, value_key] = 100 * returns.loc[0, benchmark]
     for i in range(1, len(returns)):
         returns.loc[i, value_key] = returns.loc[i-1, value_key] * returns.loc[i, benchmark]
-    return returns[value_key]
+    return returns
 
 ### Analytics ###
 
